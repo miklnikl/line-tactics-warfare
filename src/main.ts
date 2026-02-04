@@ -1,24 +1,22 @@
-import './style.css'
-import typescriptLogo from './typescript.svg'
-import viteLogo from '/vite.svg'
-import { setupCounter } from './counter.ts'
+import { Application, Graphics } from 'pixi.js'
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="${viteLogo}" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://www.typescriptlang.org/" target="_blank">
-      <img src="${typescriptLogo}" class="logo vanilla" alt="TypeScript logo" />
-    </a>
-    <h1>Vite + TypeScript</h1>
-    <div class="card">
-      <button id="counter" type="button"></button>
-    </div>
-    <p class="read-the-docs">
-      Click on the Vite and TypeScript logos to learn more
-    </p>
-  </div>
-`
+// Create a PixiJS Application
+const app = new Application()
 
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+// Initialize the application
+await app.init({
+  width: 800,
+  height: 600,
+  backgroundColor: 0x1099bb
+})
+
+// Append the canvas to the document
+document.querySelector<HTMLDivElement>('#app')!.appendChild(app.canvas)
+
+// Create a simple rectangle
+const rectangle = new Graphics()
+  .rect(100, 100, 200, 150)
+  .fill(0xff0000)
+
+// Add the rectangle to the stage
+app.stage.addChild(rectangle)
