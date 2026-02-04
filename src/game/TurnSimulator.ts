@@ -88,12 +88,11 @@ export class TurnSimulator {
    */
   simulateFullTurn(): number {
     this.reset();
-    let ticksExecuted = 0;
 
     while (this.simulateTick()) {
-      ticksExecuted++;
+      // Continue simulating until turn is complete
     }
 
-    return ticksExecuted;
+    return this.currentTick;
   }
 }
