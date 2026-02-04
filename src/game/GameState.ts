@@ -42,7 +42,7 @@ export class GameState {
    * Get the list of units
    */
   getUnits(): readonly Unit[] {
-    return this.units;
+    return [...this.units];
   }
 
   /**
