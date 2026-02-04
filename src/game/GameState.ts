@@ -39,7 +39,8 @@ export class GameState {
   }
 
   /**
-   * Get the list of units
+   * Get the list of units (returns a shallow copy)
+   * Note: The returned array is a copy, but the Unit objects themselves are not cloned
    */
   getUnits(): readonly Unit[] {
     return [...this.units];
