@@ -1,6 +1,10 @@
 /**
  * Order types for WEGO gameplay
  * Defines all possible order types that can be assigned to regiments
+ * 
+ * Note: Using a type alias instead of enum due to erasableSyntaxOnly constraint
+ * in tsconfig.json, which requires types to be erasable at runtime.
+ * Future order types can be added using union types: 'MOVE' | 'ATTACK' | 'DEFEND'
  */
 export type OrderType = 'MOVE';
 // Future order types can be added here:
