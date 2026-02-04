@@ -1,15 +1,9 @@
+import type { Order } from './Order.ts';
+
 /**
  * Facing direction for a regiment on the battlefield
  */
 export type Direction = 'NORTH' | 'SOUTH' | 'EAST' | 'WEST' | 'NORTHEAST' | 'NORTHWEST' | 'SOUTHEAST' | 'SOUTHWEST';
-
-/**
- * Base interface for regiment orders
- * This can be extended by specific order types
- */
-export interface Order {
-  type: string;
-}
 
 /**
  * Regiment class represents a single unit on the battlefield.
