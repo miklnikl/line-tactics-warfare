@@ -110,6 +110,10 @@ export class Regiment {
    * 
    * @param map - The game map to query
    * @returns The height value at the regiment's position
+   * @throws Error if the regiment's position is out of bounds
+   * 
+   * Note: Callers should ensure the regiment is positioned within map bounds
+   * or handle the potential error.
    */
   queryTerrainHeight(map: GameMap): number {
     return map.getTileHeight(this.x, this.y);

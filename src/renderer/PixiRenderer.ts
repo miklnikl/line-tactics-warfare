@@ -85,9 +85,16 @@ export class PixiRenderer {
     graphics.clear();
 
     // Get the terrain height at the unit's position
-    const height = map.isValidPosition(unit.x, unit.y) 
-      ? map.getTileHeight(unit.x, unit.y) 
-      : 0;
+    // Default to 0 if the unit is outside map bounds
+    let height = 0;
+    try {
+      if (map.isValidPosition(unit.x, unit.y)) {
+        height = map.getTileHeight(unit.x, unit.y);
+      }
+    } catch (error) {
+      // Fallback to 0 height if there's any issue querying the map
+      console.warn(`Unable to get terrain height for unit at (${unit.x}, ${unit.y}):`, error);
+    }
 
     // Convert grid coordinates to isometric screen coordinates
     // The height parameter adjusts the vertical position based on terrain elevation
