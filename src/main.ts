@@ -1,7 +1,8 @@
-import { Application, Graphics } from 'pixi.js'
+import { Application } from 'pixi.js'
 import { GameState } from './game/GameState.ts'
 import { TurnSimulator } from './game/TurnSimulator.ts'
 import { GameLoop } from './game/GameLoop.ts'
+import { PixiRenderer } from './renderer/PixiRenderer.ts'
 
 // Create a PixiJS Application
 const app = new Application()
@@ -16,21 +17,29 @@ await app.init({
 // Append the canvas to the document
 document.querySelector<HTMLDivElement>('#app')!.appendChild(app.canvas)
 
-// Create a simple rectangle
-const rectangle = new Graphics()
-  .rect(100, 100, 200, 150)
-  .fill(0xff0000)
-
-// Add the rectangle to the stage
-app.stage.addChild(rectangle)
-
 // Initialize game logic (independent of PixiJS)
 const gameState = new GameState()
 const turnSimulator = new TurnSimulator()
 const gameLoop = new GameLoop(gameState, turnSimulator)
 
+// Initialize the renderer
+const renderer = new PixiRenderer(app)
+
+// Add some test units to the game state
+gameState.addUnit({ id: 'unit-1', x: 2, y: 3 })
+gameState.addUnit({ id: 'unit-2', x: 5, y: 5 })
+gameState.addUnit({ id: 'unit-3', x: 8, y: 2 })
+
+// Render the initial state
+renderer.render(gameState)
+
 // Start the game loop
 gameLoop.start()
+
+// Add a ticker to continuously render the game state
+app.ticker.add(() => {
+  renderer.render(gameState)
+})
 
 // For demonstration: Add debug logging and a button to start simulation
 console.log('Game loop started!')
