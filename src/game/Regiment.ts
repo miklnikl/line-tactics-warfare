@@ -1,4 +1,5 @@
 import type { Order } from './Order.ts';
+import type { GameMap } from './GameMap.ts';
 
 /**
  * Facing direction for a regiment on the battlefield
@@ -101,5 +102,29 @@ export class Regiment {
     // - Combat resolution
     // - Morale updates
     // etc.
+  }
+
+  /**
+   * Query the terrain height at the regiment's current position
+   * This demonstrates how regiments can query the map for terrain data
+   * 
+   * @param map - The game map to query
+   * @returns The height value at the regiment's position
+   */
+  queryTerrainHeight(map: GameMap): number {
+    return map.getTileHeight(this.x, this.y);
+  }
+
+  /**
+   * Check if a position is valid on the map
+   * This can be used for pathfinding and movement validation
+   * 
+   * @param map - The game map to query
+   * @param x - The x coordinate to check
+   * @param y - The y coordinate to check
+   * @returns True if the position is valid on the map
+   */
+  canMoveTo(map: GameMap, x: number, y: number): boolean {
+    return map.isValidPosition(x, y);
   }
 }

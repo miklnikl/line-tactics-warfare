@@ -1,4 +1,5 @@
 import type { Unit } from './Unit.ts';
+import { GameMap } from './GameMap.ts';
 
 /**
  * Game phase for WEGO turn system
@@ -17,11 +18,14 @@ export class GameState {
   private phase: GamePhase;
   private tick: number;
   private units: Unit[];
+  private map: GameMap;
 
-  constructor() {
+  constructor(map?: GameMap) {
     this.phase = 'PLANNING';
     this.tick = 0;
     this.units = [];
+    // Use provided map or create a default 20x20 map
+    this.map = map ?? new GameMap(20, 20);
   }
 
   /**
@@ -44,6 +48,13 @@ export class GameState {
    */
   getUnits(): readonly Unit[] {
     return [...this.units];
+  }
+
+  /**
+   * Get the game map
+   */
+  getMap(): GameMap {
+    return this.map;
   }
 
   /**

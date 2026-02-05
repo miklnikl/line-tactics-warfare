@@ -1,5 +1,6 @@
 import { Application } from 'pixi.js'
 import { GameState } from './game/GameState.ts'
+import { GameMap } from './game/GameMap.ts'
 import { TurnSimulator } from './game/TurnSimulator.ts'
 import { GameLoop } from './game/GameLoop.ts'
 import { PixiRenderer } from './renderer/PixiRenderer.ts'
@@ -17,8 +18,15 @@ await app.init({
 // Append the canvas to the document
 document.querySelector<HTMLDivElement>('#app')!.appendChild(app.canvas)
 
+// Create a game map with varied terrain heights
+const gameMap = new GameMap(20, 20)
+// Set some elevated terrain for visual demonstration
+gameMap.setTileHeight(2, 3, 20)
+gameMap.setTileHeight(5, 5, 15)
+gameMap.setTileHeight(8, 2, 25)
+
 // Initialize game logic (independent of PixiJS)
-const gameState = new GameState()
+const gameState = new GameState(gameMap)
 const turnSimulator = new TurnSimulator()
 const gameLoop = new GameLoop(gameState, turnSimulator)
 
@@ -44,6 +52,7 @@ app.ticker.add(() => {
 // For demonstration: Add debug logging and a button to start simulation
 console.log('Game loop started!')
 console.log('Current phase:', gameState.getPhase())
+console.log('Map dimensions:', gameState.getMap().getWidth(), 'x', gameState.getMap().getHeight())
 console.log('Press "S" to start simulation phase')
 
 // Add keyboard event to start simulation for testing
