@@ -1,6 +1,7 @@
 import { Application, Container, Graphics } from 'pixi.js';
 import type { GameState } from '../game/GameState.ts';
 import type { Unit } from '../game/Unit.ts';
+import { gridToIso, type IsoConfig, DEFAULT_ISO_CONFIG } from '../utils/iso.ts';
 
 /**
  * PixiRenderer is responsible for drawing the current GameState using PixiJS.
@@ -15,11 +16,13 @@ export class PixiRenderer {
   private app: Application;
   private gameLayer: Container;
   private unitGraphics: Map<string, Graphics>;
+  private isoConfig: IsoConfig;
 
-  constructor(app: Application) {
+  constructor(app: Application, isoConfig: IsoConfig = DEFAULT_ISO_CONFIG) {
     this.app = app;
     this.gameLayer = new Container();
     this.unitGraphics = new Map();
+    this.isoConfig = isoConfig;
     
     // Add the game layer to the stage
     this.app.stage.addChild(this.gameLayer);
@@ -79,17 +82,16 @@ export class PixiRenderer {
     // Clear previous drawing
     graphics.clear();
 
+    // Convert grid coordinates to isometric screen coordinates
+    const { isoX, isoY } = gridToIso(unit.x, unit.y, 0, this.isoConfig);
+    
     // Draw the unit as a simple rectangle
-    // Position is based on unit's x and y coordinates
-    // Using a grid-based system: each unit is 40x40 pixels
-    const gridSize = 40;
-    const pixelX = unit.x * gridSize;
-    const pixelY = unit.y * gridSize;
+    // Position is based on isometric coordinates
     const width = 30;
     const height = 30;
 
     graphics
-      .rect(pixelX, pixelY, width, height)
+      .rect(isoX, isoY, width, height)
       .fill(0xff0000); // Red color for units
   }
 
