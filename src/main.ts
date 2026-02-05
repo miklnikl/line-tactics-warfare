@@ -58,3 +58,14 @@ document.addEventListener('keydown', (event) => {
     }
   }
 })
+
+// Add "End Turn" button event listener
+const endTurnButton = document.getElementById('end-turn-button')
+if (endTurnButton) {
+  endTurnButton.addEventListener('click', () => {
+    if (gameState.getPhase() === 'PLANNING') {
+      gameState.startTurn()
+      console.log('Turn started via button! Current phase:', gameState.getPhase())
+    }
+  })
+}
