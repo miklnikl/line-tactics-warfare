@@ -1,5 +1,6 @@
 import { Application, Container, Graphics } from 'pixi.js';
 import type { GameState } from '../game/GameState.ts';
+import type { GameMap } from '../game/GameMap.ts';
 import type { Unit } from '../game/Unit.ts';
 import { gridToIso, type IsoConfig, DEFAULT_ISO_CONFIG } from '../utils/iso.ts';
 
@@ -48,12 +49,13 @@ export class PixiRenderer {
    */
   render(gameState: GameState): void {
     const units = gameState.getUnits();
+    const map = gameState.getMap();
     const currentUnitIds = new Set<string>();
 
     // Update or create graphics for each unit
     for (const unit of units) {
       currentUnitIds.add(unit.id);
-      this.renderUnit(unit);
+      this.renderUnit(unit, map);
     }
 
     // Remove graphics for units that no longer exist
@@ -69,7 +71,7 @@ export class PixiRenderer {
    * Render a single unit as a rectangle
    * Only reads from the unit, does not mutate it
    */
-  private renderUnit(unit: Unit): void {
+  private renderUnit(unit: Unit, map: GameMap): void {
     let graphics = this.unitGraphics.get(unit.id);
 
     if (!graphics) {
@@ -82,16 +84,29 @@ export class PixiRenderer {
     // Clear previous drawing
     graphics.clear();
 
+    // Get the terrain height at the unit's position
+    // Default to 0 if the unit is outside map bounds
+    let height = 0;
+    try {
+      if (map.isValidPosition(unit.x, unit.y)) {
+        height = map.getTileHeight(unit.x, unit.y);
+      }
+    } catch (error) {
+      // Fallback to 0 height if there's any issue querying the map
+      console.warn(`Unable to get terrain height for unit at (${unit.x}, ${unit.y}):`, error);
+    }
+
     // Convert grid coordinates to isometric screen coordinates
-    const { isoX, isoY } = gridToIso(unit.x, unit.y, 0, this.isoConfig);
+    // The height parameter adjusts the vertical position based on terrain elevation
+    const { isoX, isoY } = gridToIso(unit.x, unit.y, height, this.isoConfig);
     
     // Draw the unit as a simple rectangle
     // Position is based on isometric coordinates
     const width = 30;
-    const height = 30;
+    const unitHeight = 30;
 
     graphics
-      .rect(isoX, isoY, width, height)
+      .rect(isoX, isoY, width, unitHeight)
       .fill(0xff0000); // Red color for units
   }
 
