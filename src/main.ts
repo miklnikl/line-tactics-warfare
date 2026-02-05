@@ -31,17 +31,19 @@ gameMap.setTileHeight(8, 2, 25)
 const gameState = new GameState(gameMap)
 
 // Create Regiment instances for WEGO turn system
-const regiment1 = new Regiment('regiment-1', 2, 3, 'NORTH')
-const regiment2 = new Regiment('regiment-2', 5, 5, 'EAST')
-const regiment3 = new Regiment('regiment-3', 8, 2, 'SOUTH')
+const regiments = [
+  new Regiment('regiment-1', 2, 3, 'NORTH'),
+  new Regiment('regiment-2', 5, 5, 'EAST'),
+  new Regiment('regiment-3', 8, 2, 'SOUTH')
+]
 
 // Add regiments as units to game state for rendering
-gameState.addUnit({ id: regiment1.getId(), x: regiment1.getX(), y: regiment1.getY() })
-gameState.addUnit({ id: regiment2.getId(), x: regiment2.getX(), y: regiment2.getY() })
-gameState.addUnit({ id: regiment3.getId(), x: regiment3.getX(), y: regiment3.getY() })
+for (const regiment of regiments) {
+  gameState.addUnit({ id: regiment.getId(), x: regiment.getX(), y: regiment.getY() })
+}
 
 // Create turn simulator with regiments
-const turnSimulator = new TurnSimulator([regiment1, regiment2, regiment3])
+const turnSimulator = new TurnSimulator(regiments)
 const gameLoop = new GameLoop(gameState, turnSimulator)
 
 // Initialize the renderer
@@ -53,16 +55,17 @@ renderer.render(gameState)
 // Start the game loop
 gameLoop.start()
 
+// Create a map of regiment ID to regiment for O(1) lookups
+const regimentMap = new Map(regiments.map(r => [r.getId(), r]))
+
 // Sync regiment positions to game state for rendering
 function syncRegimentsToGameState(): void {
   const units = gameState.getUnits()
-  const regiments = [regiment1, regiment2, regiment3]
   
   // Update each unit's position from its corresponding regiment
-  for (let i = 0; i < regiments.length; i++) {
-    const regiment = regiments[i]
-    const unit = units.find(u => u.id === regiment.getId())
-    if (unit) {
+  for (const unit of units) {
+    const regiment = regimentMap.get(unit.id)
+    if (regiment) {
       unit.x = regiment.getX()
       unit.y = regiment.getY()
     }
@@ -80,7 +83,7 @@ app.ticker.add(() => {
 console.log('Game loop started!')
 console.log('Current phase:', gameState.getPhase())
 console.log('Map dimensions:', gameState.getMap().getWidth(), 'x', gameState.getMap().getHeight())
-console.log('Regiments created:', [regiment1, regiment2, regiment3].map(r => ({ id: r.getId(), x: r.getX(), y: r.getY() })))
+console.log('Regiments created:', regiments.map(r => ({ id: r.getId(), x: r.getX(), y: r.getY() })))
 console.log('\nTo test WEGO turn:')
 console.log('1. Press "M" to assign a MoveOrder to regiment-1')
 console.log('2. Click "End Turn" button or press "S" to start simulation')
@@ -93,9 +96,9 @@ document.addEventListener('keydown', (event) => {
     if (gameState.getPhase() === 'PLANNING') {
       // Assign a move order to regiment 1: move from (2,3) to (10,10)
       const moveOrder: MoveOrder = { type: 'MOVE', targetX: 10, targetY: 10 }
-      regiment1.setOrder(moveOrder)
+      regiments[0].setOrder(moveOrder)
       console.log('Move order assigned to regiment-1: target (10, 10)')
-      console.log('Current position:', regiment1.getX(), regiment1.getY())
+      console.log('Current position:', regiments[0].getX(), regiments[0].getY())
     }
   }
   
@@ -115,13 +118,13 @@ document.addEventListener('keydown', (event) => {
         
         if (tick % 20 === 0 || phase === 'PLANNING') {
           console.log(`Tick: ${tick}/${TurnSimulator.getTicksPerTurn()} | Phase: ${phase}`)
-          console.log('regiment-1 position:', regiment1.getX().toFixed(2), regiment1.getY().toFixed(2))
+          console.log('regiment-1 position:', regiments[0].getX().toFixed(2), regiments[0].getY().toFixed(2))
         }
         
         if (phase === 'PLANNING') {
           console.log('\n=== SIMULATION COMPLETED ===')
           console.log('Back to PLANNING phase')
-          console.log('Final regiment-1 position:', regiment1.getX(), regiment1.getY())
+          console.log('Final regiment-1 position:', regiments[0].getX(), regiments[0].getY())
           clearInterval(logInterval)
         }
       }, 100)
