@@ -4,6 +4,8 @@ import { GameMap } from './game/GameMap.ts'
 import { TurnSimulator } from './game/TurnSimulator.ts'
 import { GameLoop } from './game/GameLoop.ts'
 import { PixiRenderer } from './renderer/PixiRenderer.ts'
+import { Regiment } from './game/Regiment.ts'
+import type { MoveOrder } from './game/Order.ts'
 
 // Create a PixiJS Application
 const app = new Application()
@@ -27,16 +29,25 @@ gameMap.setTileHeight(8, 2, 25)
 
 // Initialize game logic (independent of PixiJS)
 const gameState = new GameState(gameMap)
-const turnSimulator = new TurnSimulator()
+
+// Create Regiment instances for WEGO turn system
+const regiments = [
+  new Regiment('regiment-1', 2, 3, 'NORTH'),
+  new Regiment('regiment-2', 5, 5, 'EAST'),
+  new Regiment('regiment-3', 8, 2, 'SOUTH')
+]
+
+// Add regiments as units to game state for rendering
+for (const regiment of regiments) {
+  gameState.addUnit({ id: regiment.getId(), x: regiment.getX(), y: regiment.getY() })
+}
+
+// Create turn simulator with regiments
+const turnSimulator = new TurnSimulator(regiments)
 const gameLoop = new GameLoop(gameState, turnSimulator)
 
 // Initialize the renderer
 const renderer = new PixiRenderer(app)
-
-// Add some test units to the game state
-gameState.addUnit({ id: 'unit-1', x: 2, y: 3 })
-gameState.addUnit({ id: 'unit-2', x: 5, y: 5 })
-gameState.addUnit({ id: 'unit-3', x: 8, y: 2 })
 
 // Render the initial state
 renderer.render(gameState)
@@ -44,8 +55,27 @@ renderer.render(gameState)
 // Start the game loop
 gameLoop.start()
 
+// Create a map of regiment ID to regiment for O(1) lookups
+const regimentMap = new Map(regiments.map(r => [r.getId(), r]))
+
+// Sync regiment positions to game state for rendering
+function syncRegimentsToGameState(): void {
+  const units = gameState.getUnits()
+  
+  // Update each unit's position from its corresponding regiment
+  for (const unit of units) {
+    const regiment = regimentMap.get(unit.id)
+    if (regiment) {
+      unit.x = regiment.getX()
+      unit.y = regiment.getY()
+    }
+  }
+}
+
 // Add a ticker to continuously render the game state
 app.ticker.add(() => {
+  // Sync positions before rendering
+  syncRegimentsToGameState()
   renderer.render(gameState)
 })
 
@@ -53,23 +83,48 @@ app.ticker.add(() => {
 console.log('Game loop started!')
 console.log('Current phase:', gameState.getPhase())
 console.log('Map dimensions:', gameState.getMap().getWidth(), 'x', gameState.getMap().getHeight())
-console.log('Press "S" to start simulation phase')
+console.log('Regiments created:', regiments.map(r => ({ id: r.getId(), x: r.getX(), y: r.getY() })))
+console.log('\nTo test WEGO turn:')
+console.log('1. Press "M" to assign a MoveOrder to regiment-1')
+console.log('2. Click "End Turn" button or press "S" to start simulation')
+console.log('3. Watch the regiment move to target position')
+console.log('4. After 100 ticks, game returns to PLANNING phase')
 
-// Add keyboard event to start simulation for testing
+// Add keyboard event to assign move order and start simulation for testing
 document.addEventListener('keydown', (event) => {
+  if (event.key === 'm' || event.key === 'M') {
+    if (gameState.getPhase() === 'PLANNING') {
+      // Assign a move order to regiment 1: move from (2,3) to (10,10)
+      const moveOrder: MoveOrder = { type: 'MOVE', targetX: 10, targetY: 10 }
+      regiments[0].setOrder(moveOrder)
+      console.log('Move order assigned to regiment-1: target (10, 10)')
+      console.log('Current position:', regiments[0].getX(), regiments[0].getY())
+    }
+  }
+  
   if (event.key === 's' || event.key === 'S') {
     if (gameState.getPhase() === 'PLANNING') {
+      // Reset turn simulator before starting
+      turnSimulator.reset()
       gameState.startTurn()
-      console.log('Simulation started! Current phase:', gameState.getPhase())
+      console.log('\n=== SIMULATION STARTED ===')
+      console.log('Current phase:', gameState.getPhase())
       console.log('Turn will run for', TurnSimulator.getTicksPerTurn(), 'ticks')
       
       // Log progress periodically
       const logInterval = setInterval(() => {
         const tick = turnSimulator.getCurrentTick()
-        console.log('Tick:', tick, '/', TurnSimulator.getTicksPerTurn())
+        const phase = gameState.getPhase()
         
-        if (gameState.getPhase() === 'PLANNING') {
-          console.log('Simulation completed! Back to planning phase.')
+        if (tick % 20 === 0 || phase === 'PLANNING') {
+          console.log(`Tick: ${tick}/${TurnSimulator.getTicksPerTurn()} | Phase: ${phase}`)
+          console.log('regiment-1 position:', regiments[0].getX().toFixed(2), regiments[0].getY().toFixed(2))
+        }
+        
+        if (phase === 'PLANNING') {
+          console.log('\n=== SIMULATION COMPLETED ===')
+          console.log('Back to PLANNING phase')
+          console.log('Final regiment-1 position:', regiments[0].getX(), regiments[0].getY())
           clearInterval(logInterval)
         }
       }, 100)
@@ -82,8 +137,20 @@ const endTurnButton = document.getElementById('end-turn-button')
 if (endTurnButton) {
   endTurnButton.addEventListener('click', () => {
     if (gameState.getPhase() === 'PLANNING') {
+      // Reset turn simulator before starting
+      turnSimulator.reset()
       gameState.startTurn()
-      console.log('Turn started via button! Current phase:', gameState.getPhase())
+      console.log('\n=== Turn started via button! ===')
+      console.log('Current phase:', gameState.getPhase())
+      
+      // Log completion when turn ends
+      const checkCompletion = setInterval(() => {
+        if (gameState.getPhase() === 'PLANNING') {
+          console.log('\n=== Turn completed! ===')
+          console.log('Back to PLANNING phase')
+          clearInterval(checkCompletion)
+        }
+      }, 100)
     }
   })
 }
