@@ -1,4 +1,4 @@
-import type { Order } from './Order.ts';
+import type { Order, MoveOrder } from './Order.ts';
 import type { GameMap } from './GameMap.ts';
 
 /**
@@ -20,6 +20,11 @@ export class Regiment {
   private y: number;
   private direction: Direction;
   private order: Order | null;
+  
+  // Movement state for smooth interpolation
+  private moveStartX: number | null;
+  private moveStartY: number | null;
+  private moveTickCount: number;
 
   constructor(id: string, x: number, y: number, direction: Direction = 'NORTH') {
     this.id = id;
@@ -27,6 +32,9 @@ export class Regiment {
     this.y = y;
     this.direction = direction;
     this.order = null;
+    this.moveStartX = null;
+    this.moveStartY = null;
+    this.moveTickCount = 0;
   }
 
   /**
@@ -84,6 +92,10 @@ export class Regiment {
    */
   setOrder(order: Order | null): void {
     this.order = order;
+    // Reset movement state when a new order is assigned
+    this.moveStartX = null;
+    this.moveStartY = null;
+    this.moveTickCount = 0;
   }
 
   /**
@@ -93,15 +105,66 @@ export class Regiment {
   updateTick(): void {
     // Execute current order if any
     if (this.order !== null) {
-      // Order execution logic will be implemented when specific order types are defined
-      // For now, this is a placeholder for the simulation tick update
+      if (this.order.type === 'MOVE') {
+        this.executeMoveOrder(this.order as MoveOrder);
+      }
+      // Other order types can be added here in the future
     }
     
     // Additional per-tick logic can be added here:
-    // - Movement processing
     // - Combat resolution
     // - Morale updates
     // etc.
+  }
+
+  /**
+   * Execute a move order over multiple ticks
+   * Movement is interpolated to reach the target smoothly over the course of a turn
+   * 
+   * @param order - The move order to execute
+   */
+  private executeMoveOrder(order: MoveOrder): void {
+    const TICKS_PER_TURN = 100; // Match TurnSimulator.TICKS_PER_TURN
+    
+    // Initialize movement state on first tick of this order
+    if (this.moveStartX === null || this.moveStartY === null) {
+      this.moveStartX = this.x;
+      this.moveStartY = this.y;
+      this.moveTickCount = 0;
+    }
+    
+    // Check if already at target
+    if (this.x === order.targetX && this.y === order.targetY) {
+      this.order = null;
+      return;
+    }
+    
+    // Increment tick count
+    this.moveTickCount++;
+    
+    // Calculate total distance
+    const deltaX = order.targetX - this.moveStartX;
+    const deltaY = order.targetY - this.moveStartY;
+    
+    // Calculate progress (0 to 1)
+    const progress = Math.min(this.moveTickCount / TICKS_PER_TURN, 1.0);
+    
+    // Calculate new position using linear interpolation
+    const newX = this.moveStartX + deltaX * progress;
+    const newY = this.moveStartY + deltaY * progress;
+    
+    // Update position
+    this.x = newX;
+    this.y = newY;
+    
+    // Check if we've reached the target (at end of turn or very close)
+    if (progress >= 1.0) {
+      // Snap to exact target position
+      this.x = order.targetX;
+      this.y = order.targetY;
+      // Clear the order
+      this.order = null;
+    }
   }
 
   /**
