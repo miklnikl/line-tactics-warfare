@@ -1,5 +1,6 @@
 import type { Order, MoveOrder } from './Order.ts';
 import type { GameMap } from './GameMap.ts';
+import { TurnSimulator } from './TurnSimulator.ts';
 
 /**
  * Facing direction for a regiment on the battlefield
@@ -124,19 +125,17 @@ export class Regiment {
    * @param order - The move order to execute
    */
   private executeMoveOrder(order: MoveOrder): void {
-    const TICKS_PER_TURN = 100; // Match TurnSimulator.TICKS_PER_TURN
-    
     // Initialize movement state on first tick of this order
     if (this.moveStartX === null || this.moveStartY === null) {
       this.moveStartX = this.x;
       this.moveStartY = this.y;
       this.moveTickCount = 0;
-    }
-    
-    // Check if already at target
-    if (this.x === order.targetX && this.y === order.targetY) {
-      this.order = null;
-      return;
+      
+      // Check if already at target before starting movement
+      if (this.moveStartX === order.targetX && this.moveStartY === order.targetY) {
+        this.order = null;
+        return;
+      }
     }
     
     // Increment tick count
@@ -147,7 +146,7 @@ export class Regiment {
     const deltaY = order.targetY - this.moveStartY;
     
     // Calculate progress (0 to 1)
-    const progress = Math.min(this.moveTickCount / TICKS_PER_TURN, 1.0);
+    const progress = Math.min(this.moveTickCount / TurnSimulator.getTicksPerTurn(), 1.0);
     
     // Calculate new position using linear interpolation
     const newX = this.moveStartX + deltaX * progress;
@@ -157,7 +156,7 @@ export class Regiment {
     this.x = newX;
     this.y = newY;
     
-    // Check if we've reached the target (at end of turn or very close)
+    // Check if we've reached the target (at end of turn)
     if (progress >= 1.0) {
       // Snap to exact target position
       this.x = order.targetX;
