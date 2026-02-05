@@ -57,6 +57,10 @@ export class GameLoop {
   /**
    * Main game loop function
    * Called continuously by requestAnimationFrame
+   * 
+   * Note: The loop runs continuously on every frame, even during PLANNING phase.
+   * This is intentional to allow immediate responsiveness when transitioning
+   * between phases and to support future features like rendering updates.
    */
   private loop = (): void => {
     if (!this.isRunning) {
