@@ -1,4 +1,4 @@
-import type { GameState } from '../game/GameState.ts';
+import type { GameState, GamePhase } from '../game/GameState.ts';
 import type { Regiment } from '../game/Regiment.ts';
 import type { MoveOrder } from '../game/Order.ts';
 
@@ -38,6 +38,7 @@ export class RegimentInfoPanel {
    */
   update(): void {
     const selectedId = this.gameState.getSelectedRegimentId();
+    const phase = this.gameState.getPhase();
     
     if (!selectedId) {
       // Hide panel when no regiment is selected
@@ -57,13 +58,13 @@ export class RegimentInfoPanel {
     this.panelElement.style.display = 'block';
     
     // Update panel content using DOM manipulation for security
-    this.updatePanelContent(regiment);
+    this.updatePanelContent(regiment, phase);
   }
 
   /**
    * Update the panel content using safe DOM manipulation
    */
-  private updatePanelContent(regiment: Regiment): void {
+  private updatePanelContent(regiment: Regiment, phase: GamePhase): void {
     const id = regiment.getId();
     const x = regiment.getX();
     const y = regiment.getY();
@@ -92,6 +93,14 @@ export class RegimentInfoPanel {
     const title = document.createElement('h3');
     title.textContent = 'Regiment Info';
     this.panelElement.appendChild(title);
+    
+    // Add read-only indicator during simulation
+    if (phase === 'SIMULATION') {
+      const readOnlyBadge = document.createElement('div');
+      readOnlyBadge.className = 'read-only-badge';
+      readOnlyBadge.textContent = 'READ-ONLY';
+      this.panelElement.appendChild(readOnlyBadge);
+    }
     
     // Create info rows
     this.appendInfoRow('ID', id);

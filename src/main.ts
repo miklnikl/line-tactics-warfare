@@ -96,6 +96,9 @@ app.ticker.add(() => {
   
   // Update the command panel
   commandPanel.update()
+  
+  // Update UI state based on phase
+  updateUIState()
 })
 
 // For demonstration: Add debug logging and a button to start simulation
@@ -152,7 +155,7 @@ document.addEventListener('keydown', (event) => {
 })
 
 // Add "End Turn" button event listener
-const endTurnButton = document.getElementById('end-turn-button')
+const endTurnButton = document.getElementById('end-turn-button') as HTMLButtonElement | null
 if (endTurnButton) {
   endTurnButton.addEventListener('click', () => {
     if (gameState.getPhase() === 'PLANNING') {
@@ -172,4 +175,25 @@ if (endTurnButton) {
       }, 100)
     }
   })
+}
+
+// Get phase indicator element
+const phaseIndicator = document.getElementById('phase-indicator')
+
+/**
+ * Update UI state based on current game phase
+ */
+function updateUIState(): void {
+  const phase = gameState.getPhase()
+  
+  // Update End Turn button state
+  if (endTurnButton) {
+    endTurnButton.disabled = phase !== 'PLANNING'
+  }
+  
+  // Update phase indicator
+  if (phaseIndicator) {
+    phaseIndicator.textContent = `Phase: ${phase}`
+    phaseIndicator.className = `phase-indicator phase-${phase.toLowerCase()}`
+  }
 }
