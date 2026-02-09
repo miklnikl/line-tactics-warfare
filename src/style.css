@@ -81,10 +81,15 @@ button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
-button:disabled {
+button:disabled,
+.command-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   border-color: transparent;
+}
+
+.command-button:disabled {
+  background-color: #4a4a4a;
 }
 
 @media (prefers-color-scheme: light) {
@@ -98,9 +103,13 @@ button:disabled {
   button {
     background-color: #f9f9f9;
   }
-  button:disabled {
+  button:disabled,
+  .command-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+  .command-button:disabled {
+    background-color: #cccccc;
   }
 }
 
@@ -315,16 +324,7 @@ button:disabled {
     border-color: #ff8c00;
     color: #ff8c00;
   }
-}
 
-/* Command Button Disabled State */
-.command-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background-color: #4a4a4a;
-}
-
-@media (prefers-color-scheme: light) {
   .command-button:disabled {
     background-color: #cccccc;
   }
