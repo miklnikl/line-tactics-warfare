@@ -19,6 +19,7 @@ export class GameState {
   private tick: number;
   private units: Unit[];
   private map: GameMap;
+  private selectedRegimentId: string | null;
 
   constructor(map?: GameMap) {
     this.phase = 'PLANNING';
@@ -26,6 +27,7 @@ export class GameState {
     this.units = [];
     // Use provided map or create a default 20x20 map
     this.map = map ?? new GameMap(20, 20);
+    this.selectedRegimentId = null;
   }
 
   /**
@@ -81,6 +83,24 @@ export class GameState {
     if (this.phase === 'SIMULATION') {
       this.phase = 'PLANNING';
       this.tick = 0;
+    }
+  }
+
+  /**
+   * Get the currently selected regiment ID
+   */
+  getSelectedRegimentId(): string | null {
+    return this.selectedRegimentId;
+  }
+
+  /**
+   * Set the selected regiment ID
+   * Can only be set during PLANNING phase
+   * Pass null to clear selection
+   */
+  setSelectedRegimentId(regimentId: string | null): void {
+    if (this.phase === 'PLANNING') {
+      this.selectedRegimentId = regimentId;
     }
   }
 
