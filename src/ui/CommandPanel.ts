@@ -23,6 +23,7 @@ export class CommandPanel {
   private holdButton: HTMLButtonElement;
   private cancelButton: HTMLButtonElement;
   private statusText: HTMLElement;
+  private canvasClickHandler: (event: MouseEvent) => void;
 
   constructor(gameState: GameState, regiments: Regiment[], app: Application) {
     this.gameState = gameState;
@@ -173,7 +174,7 @@ export class CommandPanel {
    * Set up canvas click listener for move target selection
    */
   private setupCanvasClickListener(): void {
-    this.app.canvas.addEventListener('click', (event) => {
+    this.canvasClickHandler = (event) => {
       if (!this.moveMode || this.gameState.getPhase() !== 'PLANNING') {
         return;
       }
@@ -213,6 +214,17 @@ export class CommandPanel {
       // Exit move mode
       this.moveMode = false;
       this.update();
-    }, true); // Use capture phase to run before InputHandler
+    };
+    
+    this.app.canvas.addEventListener('click', this.canvasClickHandler, true); // Use capture phase to run before InputHandler
+  }
+
+  /**
+   * Clean up resources and event listeners
+   */
+  destroy(): void {
+    if (this.canvasClickHandler) {
+      this.app.canvas.removeEventListener('click', this.canvasClickHandler, true);
+    }
   }
 }
