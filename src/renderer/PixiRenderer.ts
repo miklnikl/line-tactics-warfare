@@ -86,10 +86,14 @@ export class PixiRenderer {
 
     // Get the terrain height at the unit's position
     // Default to 0 if the unit is outside map bounds
+    // Floor the coordinates to get the tile position since units can have fractional positions during simulation
     let height = 0;
+    const tileX = Math.floor(unit.x);
+    const tileY = Math.floor(unit.y);
+    
     try {
-      if (map.isValidPosition(unit.x, unit.y)) {
-        height = map.getTileHeight(unit.x, unit.y);
+      if (map.isValidPosition(tileX, tileY)) {
+        height = map.getTileHeight(tileX, tileY);
       }
     } catch (error) {
       // Fallback to 0 height if there's any issue querying the map
