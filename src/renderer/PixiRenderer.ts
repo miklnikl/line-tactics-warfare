@@ -22,6 +22,12 @@ export class PixiRenderer {
   private orderVisualizationLayer: Container;
   private isoConfig: IsoConfig;
 
+  // Visual constants for order visualization
+  private static readonly UNIT_CENTER_OFFSET_X = 15; // Half of unit width (30/2)
+  private static readonly UNIT_CENTER_OFFSET_Y = 15; // Half of unit height (30/2)
+  private static readonly ARROW_HEAD_SIZE = 10;
+  private static readonly HOLD_ORDER_CIRCLE_RADIUS = 25;
+
   constructor(app: Application, isoConfig: IsoConfig = DEFAULT_ISO_CONFIG) {
     this.app = app;
     this.gameLayer = new Container();
@@ -208,10 +214,8 @@ export class PixiRenderer {
     const targetIso = gridToIso(targetX, targetY, targetHeight, this.isoConfig);
 
     // Offset to center of unit (30x30 from renderUnit)
-    const unitCenterOffsetX = 15;
-    const unitCenterOffsetY = 15;
-    const startX = regimentIso.isoX + unitCenterOffsetX;
-    const startY = regimentIso.isoY + unitCenterOffsetY;
+    const startX = regimentIso.isoX + PixiRenderer.UNIT_CENTER_OFFSET_X;
+    const startY = regimentIso.isoY + PixiRenderer.UNIT_CENTER_OFFSET_Y;
 
     // Draw target tile highlight (before arrow so arrow is on top)
     const tileWidth = this.isoConfig.tileWidth;
@@ -237,16 +241,15 @@ export class PixiRenderer {
       .stroke({ width: 3, color: 0x00ff00 }); // Green arrow
 
     // Draw arrowhead
-    const arrowSize = 10;
     const angle = Math.atan2(endY - startY, endX - startX);
     const arrowAngle1 = angle + Math.PI * 0.85;
     const arrowAngle2 = angle - Math.PI * 0.85;
 
     graphics
       .moveTo(endX, endY)
-      .lineTo(endX + arrowSize * Math.cos(arrowAngle1), endY + arrowSize * Math.sin(arrowAngle1))
+      .lineTo(endX + PixiRenderer.ARROW_HEAD_SIZE * Math.cos(arrowAngle1), endY + PixiRenderer.ARROW_HEAD_SIZE * Math.sin(arrowAngle1))
       .moveTo(endX, endY)
-      .lineTo(endX + arrowSize * Math.cos(arrowAngle2), endY + arrowSize * Math.sin(arrowAngle2))
+      .lineTo(endX + PixiRenderer.ARROW_HEAD_SIZE * Math.cos(arrowAngle2), endY + PixiRenderer.ARROW_HEAD_SIZE * Math.sin(arrowAngle2))
       .stroke({ width: 3, color: 0x00ff00 });
   }
 
@@ -273,14 +276,11 @@ export class PixiRenderer {
     const regimentIso = gridToIso(regimentX, regimentY, regimentHeight, this.isoConfig);
 
     // Draw a circle indicator around the regiment (different color for HOLD)
-    const unitCenterOffsetX = 15;
-    const unitCenterOffsetY = 15;
-    const centerX = regimentIso.isoX + unitCenterOffsetX;
-    const centerY = regimentIso.isoY + unitCenterOffsetY;
-    const radius = 25;
+    const centerX = regimentIso.isoX + PixiRenderer.UNIT_CENTER_OFFSET_X;
+    const centerY = regimentIso.isoY + PixiRenderer.UNIT_CENTER_OFFSET_Y;
 
     graphics
-      .circle(centerX, centerY, radius)
+      .circle(centerX, centerY, PixiRenderer.HOLD_ORDER_CIRCLE_RADIUS)
       .stroke({ width: 3, color: 0x0000ff }); // Blue circle for HOLD order
   }
 
