@@ -324,8 +324,4 @@ button:disabled,
     border-color: #ff8c00;
     color: #ff8c00;
   }
-
-  .command-button:disabled {
-    background-color: #cccccc;
-  }
 }
