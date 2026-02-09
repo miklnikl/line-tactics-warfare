@@ -1,5 +1,6 @@
 import type { GameState } from '../game/GameState.ts';
 import type { Regiment } from '../game/Regiment.ts';
+import type { MoveOrder } from '../game/Order.ts';
 
 /**
  * RegimentInfoPanel displays information about the currently selected regiment.
@@ -55,15 +56,14 @@ export class RegimentInfoPanel {
     // Show panel and update content
     this.panelElement.style.display = 'block';
     
-    // Update panel content
-    const content = this.buildPanelContent(regiment);
-    this.panelElement.innerHTML = content;
+    // Update panel content using DOM manipulation for security
+    this.updatePanelContent(regiment);
   }
 
   /**
-   * Build the HTML content for the panel
+   * Update the panel content using safe DOM manipulation
    */
-  private buildPanelContent(regiment: Regiment): string {
+  private updatePanelContent(regiment: Regiment): void {
     const id = regiment.getId();
     const x = regiment.getX();
     const y = regiment.getY();
@@ -78,31 +78,45 @@ export class RegimentInfoPanel {
     let orderText = 'None';
     if (order) {
       if (order.type === 'MOVE') {
-        const moveOrder = order as any; // Type assertion for MoveOrder
+        const moveOrder = order as MoveOrder;
         orderText = `MOVE to (${moveOrder.targetX}, ${moveOrder.targetY})`;
       } else {
         orderText = order.type;
       }
     }
     
-    return `
-      <h3>Regiment Info</h3>
-      <div class="info-row">
-        <span class="info-label">ID:</span>
-        <span class="info-value">${id}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Position:</span>
-        <span class="info-value">(${posX}, ${posY})</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Direction:</span>
-        <span class="info-value">${direction}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Order:</span>
-        <span class="info-value">${orderText}</span>
-      </div>
-    `;
+    // Clear existing content
+    this.panelElement.innerHTML = '';
+    
+    // Create title
+    const title = document.createElement('h3');
+    title.textContent = 'Regiment Info';
+    this.panelElement.appendChild(title);
+    
+    // Create info rows
+    this.appendInfoRow('ID', id);
+    this.appendInfoRow('Position', `(${posX}, ${posY})`);
+    this.appendInfoRow('Direction', direction);
+    this.appendInfoRow('Order', orderText);
+  }
+
+  /**
+   * Append an info row to the panel
+   */
+  private appendInfoRow(label: string, value: string): void {
+    const row = document.createElement('div');
+    row.className = 'info-row';
+    
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'info-label';
+    labelSpan.textContent = `${label}:`;
+    
+    const valueSpan = document.createElement('span');
+    valueSpan.className = 'info-value';
+    valueSpan.textContent = value;
+    
+    row.appendChild(labelSpan);
+    row.appendChild(valueSpan);
+    this.panelElement.appendChild(row);
   }
 }

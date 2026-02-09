@@ -51,9 +51,9 @@ const gameLoop = new GameLoop(gameState, turnSimulator)
 // Initialize the renderer
 const renderer = new PixiRenderer(app)
 
-// Initialize the input handler
+// Initialize the input handler (instantiated for its event listener setup)
 const inputHandler = new InputHandler(app, gameState, regiments)
-void inputHandler // Used for side effects (event listeners)
+void inputHandler // Suppress unused variable warning
 
 // Initialize the regiment info panel
 const regimentInfoPanel = new RegimentInfoPanel(gameState, regiments)
