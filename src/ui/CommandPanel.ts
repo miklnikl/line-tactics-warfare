@@ -24,6 +24,8 @@ export class CommandPanel {
   private cancelButton: HTMLButtonElement;
   private statusText: HTMLElement;
   private canvasClickHandler: (event: MouseEvent) => void;
+  private canvasContextMenuHandler: (event: MouseEvent) => void;
+  private keydownHandler: (event: KeyboardEvent) => void;
 
   constructor(gameState: GameState, regiments: Regiment[], app: Application) {
     this.gameState = gameState;
@@ -51,6 +53,9 @@ export class CommandPanel {
     
     // Set up canvas click listener for move target selection
     this.setupCanvasClickListener();
+    
+    // Set up right-click and ESC key handlers for cancellation
+    this.setupCancellationHandlers();
     
     // Initialize panel state
     this.update();
@@ -220,11 +225,41 @@ export class CommandPanel {
   }
 
   /**
+   * Set up right-click and ESC key handlers for cancellation
+   */
+  private setupCancellationHandlers(): void {
+    // Right-click handler to cancel move mode
+    this.canvasContextMenuHandler = (event) => {
+      if (this.moveMode) {
+        event.preventDefault();
+        this.cancelMoveMode();
+      }
+    };
+    
+    this.app.canvas.addEventListener('contextmenu', this.canvasContextMenuHandler, true); // Use capture phase for consistency
+    
+    // ESC key handler to cancel move mode
+    this.keydownHandler = (event) => {
+      if (event.key === 'Escape' && this.moveMode) {
+        this.cancelMoveMode();
+      }
+    };
+    
+    document.addEventListener('keydown', this.keydownHandler);
+  }
+
+  /**
    * Clean up resources and event listeners
    */
   destroy(): void {
     if (this.canvasClickHandler) {
       this.app.canvas.removeEventListener('click', this.canvasClickHandler, true);
+    }
+    if (this.canvasContextMenuHandler) {
+      this.app.canvas.removeEventListener('contextmenu', this.canvasContextMenuHandler, true);
+    }
+    if (this.keydownHandler) {
+      document.removeEventListener('keydown', this.keydownHandler);
     }
   }
 }
