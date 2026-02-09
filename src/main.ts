@@ -7,6 +7,7 @@ import { PixiRenderer } from './renderer/PixiRenderer.ts'
 import { Regiment } from './game/Regiment.ts'
 import type { MoveOrder } from './game/Order.ts'
 import { InputHandler } from './input/InputHandler.ts'
+import { RegimentInfoPanel } from './ui/RegimentInfoPanel.ts'
 
 // Create a PixiJS Application
 const app = new Application()
@@ -52,6 +53,10 @@ const renderer = new PixiRenderer(app)
 
 // Initialize the input handler
 const inputHandler = new InputHandler(app, gameState, regiments)
+void inputHandler // Used for side effects (event listeners)
+
+// Initialize the regiment info panel
+const regimentInfoPanel = new RegimentInfoPanel(gameState, regiments)
 
 // Render the initial state
 renderer.render(gameState)
@@ -81,6 +86,9 @@ app.ticker.add(() => {
   // Sync positions before rendering
   syncRegimentsToGameState()
   renderer.render(gameState)
+  
+  // Update the regiment info panel
+  regimentInfoPanel.update()
 })
 
 // For demonstration: Add debug logging and a button to start simulation

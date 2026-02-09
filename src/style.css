@@ -94,3 +94,65 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Regiment Info Panel Styles */
+.info-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: rgba(26, 26, 26, 0.95);
+  border: 2px solid #646cff;
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 250px;
+  color: rgba(255, 255, 255, 0.87);
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  display: none; /* Hidden by default */
+}
+
+.info-panel h3 {
+  margin: 0 0 12px 0;
+  font-size: 1.2em;
+  color: #646cff;
+  border-bottom: 1px solid #646cff;
+  padding-bottom: 8px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 0;
+  font-size: 0.95em;
+}
+
+.info-label {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.info-value {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+@media (prefers-color-scheme: light) {
+  .info-panel {
+    background-color: rgba(249, 249, 249, 0.95);
+    border-color: #535bf2;
+    color: #213547;
+  }
+
+  .info-panel h3 {
+    color: #535bf2;
+    border-bottom-color: #535bf2;
+  }
+
+  .info-label {
+    color: rgba(33, 53, 71, 0.7);
+  }
+
+  .info-value {
+    color: rgba(33, 53, 71, 0.95);
+  }
+}
