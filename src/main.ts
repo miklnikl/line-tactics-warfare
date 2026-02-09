@@ -6,6 +6,7 @@ import { GameLoop } from './game/GameLoop.ts'
 import { PixiRenderer } from './renderer/PixiRenderer.ts'
 import { Regiment } from './game/Regiment.ts'
 import type { MoveOrder } from './game/Order.ts'
+import { InputHandler } from './input/InputHandler.ts'
 
 // Create a PixiJS Application
 const app = new Application()
@@ -48,6 +49,9 @@ const gameLoop = new GameLoop(gameState, turnSimulator)
 
 // Initialize the renderer
 const renderer = new PixiRenderer(app)
+
+// Initialize the input handler
+const inputHandler = new InputHandler(app, gameState, regiments)
 
 // Render the initial state
 renderer.render(gameState)

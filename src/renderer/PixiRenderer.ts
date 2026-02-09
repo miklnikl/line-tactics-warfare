@@ -50,12 +50,14 @@ export class PixiRenderer {
   render(gameState: GameState): void {
     const units = gameState.getUnits();
     const map = gameState.getMap();
+    const selectedRegimentId = gameState.getSelectedRegimentId();
     const currentUnitIds = new Set<string>();
 
     // Update or create graphics for each unit
     for (const unit of units) {
       currentUnitIds.add(unit.id);
-      this.renderUnit(unit, map);
+      const isSelected = unit.id === selectedRegimentId;
+      this.renderUnit(unit, map, isSelected);
     }
 
     // Remove graphics for units that no longer exist
@@ -71,7 +73,7 @@ export class PixiRenderer {
    * Render a single unit as a rectangle
    * Only reads from the unit, does not mutate it
    */
-  private renderUnit(unit: Unit, map: GameMap): void {
+  private renderUnit(unit: Unit, map: GameMap, isSelected: boolean = false): void {
     let graphics = this.unitGraphics.get(unit.id);
 
     if (!graphics) {
@@ -109,9 +111,19 @@ export class PixiRenderer {
     const width = 30;
     const unitHeight = 30;
 
+    // Use different colors for selected vs unselected units
+    const fillColor = isSelected ? 0xffff00 : 0xff0000; // Yellow for selected, red for unselected
+    
     graphics
       .rect(isoX, isoY, width, unitHeight)
-      .fill(0xff0000); // Red color for units
+      .fill(fillColor);
+    
+    // Add a border to selected units for extra visibility
+    if (isSelected) {
+      graphics
+        .rect(isoX, isoY, width, unitHeight)
+        .stroke({ width: 2, color: 0xffffff }); // White border
+    }
   }
 
   /**
