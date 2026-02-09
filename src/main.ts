@@ -63,7 +63,7 @@ const regimentInfoPanel = new RegimentInfoPanel(gameState, regiments)
 const commandPanel = new CommandPanel(gameState, regiments, app)
 
 // Render the initial state
-renderer.render(gameState)
+renderer.render(gameState, regiments)
 
 // Start the game loop
 gameLoop.start()
@@ -89,7 +89,7 @@ function syncRegimentsToGameState(): void {
 app.ticker.add(() => {
   // Sync positions before rendering
   syncRegimentsToGameState()
-  renderer.render(gameState)
+  renderer.render(gameState, regiments)
   
   // Update the regiment info panel
   regimentInfoPanel.update()
