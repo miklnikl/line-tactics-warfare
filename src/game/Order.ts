@@ -6,7 +6,7 @@
  * in tsconfig.json, which requires types to be erasable at runtime.
  * Future order types can be added using union types: 'MOVE' | 'ATTACK' | 'DEFEND'
  */
-export type OrderType = 'MOVE';
+export type OrderType = 'MOVE' | 'HOLD';
 // Future order types can be added here:
 // export type OrderType = 'MOVE' | 'ATTACK' | 'DEFEND' | 'HOLD';
 
@@ -27,4 +27,12 @@ export interface MoveOrder extends Order {
   type: 'MOVE';
   targetX: number;
   targetY: number;
+}
+
+/**
+ * Hold order - regiment stays in place
+ * Instructs a regiment to hold its current position
+ */
+export interface HoldOrder extends Order {
+  type: 'HOLD';
 }
