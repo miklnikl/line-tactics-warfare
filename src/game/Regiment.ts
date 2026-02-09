@@ -108,6 +108,8 @@ export class Regiment {
     if (this.order !== null) {
       if (this.order.type === 'MOVE') {
         this.executeMoveOrder(this.order as MoveOrder);
+      } else if (this.order.type === 'HOLD') {
+        // HOLD order: regiment stays in place, no action needed
       }
       // Other order types can be added here in the future
     }

@@ -8,6 +8,7 @@ import { Regiment } from './game/Regiment.ts'
 import type { MoveOrder } from './game/Order.ts'
 import { InputHandler } from './input/InputHandler.ts'
 import { RegimentInfoPanel } from './ui/RegimentInfoPanel.ts'
+import { CommandPanel } from './ui/CommandPanel.ts'
 
 // Create a PixiJS Application
 const app = new Application()
@@ -58,6 +59,9 @@ void inputHandler // Suppress unused variable warning
 // Initialize the regiment info panel
 const regimentInfoPanel = new RegimentInfoPanel(gameState, regiments)
 
+// Initialize the command panel
+const commandPanel = new CommandPanel(gameState, regiments, app)
+
 // Render the initial state
 renderer.render(gameState)
 
@@ -89,6 +93,9 @@ app.ticker.add(() => {
   
   // Update the regiment info panel
   regimentInfoPanel.update()
+  
+  // Update the command panel
+  commandPanel.update()
 })
 
 // For demonstration: Add debug logging and a button to start simulation
