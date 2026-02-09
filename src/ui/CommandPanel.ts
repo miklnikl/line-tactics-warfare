@@ -236,7 +236,7 @@ export class CommandPanel {
       }
     };
     
-    this.app.canvas.addEventListener('contextmenu', this.canvasContextMenuHandler);
+    this.app.canvas.addEventListener('contextmenu', this.canvasContextMenuHandler, true); // Use capture phase for consistency
     
     // ESC key handler to cancel move mode
     this.keydownHandler = (event) => {
@@ -256,7 +256,7 @@ export class CommandPanel {
       this.app.canvas.removeEventListener('click', this.canvasClickHandler, true);
     }
     if (this.canvasContextMenuHandler) {
-      this.app.canvas.removeEventListener('contextmenu', this.canvasContextMenuHandler);
+      this.app.canvas.removeEventListener('contextmenu', this.canvasContextMenuHandler, true);
     }
     if (this.keydownHandler) {
       document.removeEventListener('keydown', this.keydownHandler);
