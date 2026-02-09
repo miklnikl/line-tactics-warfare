@@ -76,7 +76,7 @@ export class InputHandler {
   private findRegimentAtPosition(gridX: number, gridY: number): Regiment | null {
     // Check each regiment to see if it's at this position
     // Use a tolerance for clicking near a regiment
-    const tolerance = 0.5;
+    const tolerance = 1.0;
 
     for (const regiment of this.regiments) {
       const dx = Math.abs(regiment.getX() - gridX);
