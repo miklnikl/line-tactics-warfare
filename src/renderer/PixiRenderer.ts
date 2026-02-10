@@ -4,7 +4,7 @@ import type { GameMap } from '../game/GameMap.ts';
 import type { Unit } from '../game/Unit.ts';
 import type { Regiment } from '../game/Regiment.ts';
 import type { MoveOrder } from '../game/Order.ts';
-import { gridToIso, type IsoConfig, DEFAULT_ISO_CONFIG } from '../utils/iso.ts';
+import { gridToIso, isoToGrid, type IsoConfig, DEFAULT_ISO_CONFIG } from '../utils/iso.ts';
 
 /**
  * PixiRenderer is responsible for drawing the current GameState using PixiJS.
@@ -17,28 +17,45 @@ import { gridToIso, type IsoConfig, DEFAULT_ISO_CONFIG } from '../utils/iso.ts';
  */
 export class PixiRenderer {
   private app: Application;
+  private mapLayer: Container;
   private gameLayer: Container;
   private unitGraphics: Map<string, Graphics>;
   private orderVisualizationLayer: Container;
+  private hoverLayer: Container;
   private isoConfig: IsoConfig;
+  private mapGraphics: Graphics | null;
+  private hoveredTile: { x: number; y: number } | null;
 
   // Visual constants for order visualization
-  private static readonly UNIT_CENTER_OFFSET_X = 15; // Half of unit width (30/2)
-  private static readonly UNIT_CENTER_OFFSET_Y = 15; // Half of unit height (30/2)
+  private static readonly UNIT_CENTER_OFFSET_X = 32; // Half of tile width (64/2)
+  private static readonly UNIT_CENTER_OFFSET_Y = 16; // Half of tile height (32/2)
   private static readonly ARROW_HEAD_SIZE = 10;
   private static readonly HOLD_ORDER_CIRCLE_RADIUS = 25;
 
+  // Visual constants for tiles
+  private static readonly GRASS_COLOR = 0x85EC0D; // #85EC0D
+  private static readonly TILE_BORDER_COLOR = 0xB9FF6C; // #B9FF6C
+  private static readonly TILE_HOVER_COLOR = 0xFFFFFF; // White highlight
+
   constructor(app: Application, isoConfig: IsoConfig = DEFAULT_ISO_CONFIG) {
     this.app = app;
+    this.mapLayer = new Container();
     this.gameLayer = new Container();
     this.unitGraphics = new Map();
     this.orderVisualizationLayer = new Container();
+    this.hoverLayer = new Container();
     this.isoConfig = isoConfig;
+    this.mapGraphics = null;
+    this.hoveredTile = null;
     
-    // Add the game layer to the stage
+    // Add layers to the stage in order (bottom to top)
+    this.app.stage.addChild(this.mapLayer);
     this.app.stage.addChild(this.gameLayer);
-    // Add the order visualization layer on top
     this.app.stage.addChild(this.orderVisualizationLayer);
+    this.app.stage.addChild(this.hoverLayer);
+    
+    // Set up mouse move listener for hover effect
+    this.setupHoverListener();
   }
 
   /**
@@ -68,6 +85,12 @@ export class PixiRenderer {
     const selectedRegimentId = gameState.getSelectedRegimentId();
     const currentUnitIds = new Set<string>();
 
+    // Render the map tiles (only once or when map changes)
+    this.renderMap(map);
+
+    // Render hover effect with map bounds checking
+    this.renderHoverEffect(map);
+
     // Update or create graphics for each unit
     for (const unit of units) {
       currentUnitIds.add(unit.id);
@@ -93,7 +116,7 @@ export class PixiRenderer {
   }
 
   /**
-   * Render a single unit as a rectangle
+   * Render a single unit as an isometric diamond shape
    * Only reads from the unit, does not mutate it
    */
   private renderUnit(unit: Unit, map: GameMap, isSelected: boolean = false): void {
@@ -129,22 +152,31 @@ export class PixiRenderer {
     // The height parameter adjusts the vertical position based on terrain elevation
     const { isoX, isoY } = gridToIso(unit.x, unit.y, height, this.isoConfig);
     
-    // Draw the unit as a simple rectangle
-    // Position is based on isometric coordinates
-    const width = 30;
-    const unitHeight = 30;
+    // Draw the unit as an isometric diamond shape
+    // Use the same dimensions as tiles for consistency
+    const tileWidth = this.isoConfig.tileWidth;
+    const tileHeight = this.isoConfig.tileHeight;
 
     // Use different colors for selected vs unselected units
     const fillColor = isSelected ? 0xffff00 : 0xff0000; // Yellow for selected, red for unselected
     
+    // Draw isometric diamond for the regiment
     graphics
-      .rect(isoX, isoY, width, unitHeight)
+      .moveTo(isoX + tileWidth / 2, isoY)
+      .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
+      .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
+      .lineTo(isoX, isoY + tileHeight / 2)
+      .lineTo(isoX + tileWidth / 2, isoY)
       .fill(fillColor);
     
     // Add a border to selected units for extra visibility
     if (isSelected) {
       graphics
-        .rect(isoX, isoY, width, unitHeight)
+        .moveTo(isoX + tileWidth / 2, isoY)
+        .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
+        .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
+        .lineTo(isoX, isoY + tileHeight / 2)
+        .lineTo(isoX + tileWidth / 2, isoY)
         .stroke({ width: 2, color: 0xffffff }); // White border
     }
   }
@@ -292,14 +324,134 @@ export class PixiRenderer {
   }
 
   /**
+   * Render the map tiles as an isometric grid
+   */
+  private renderMap(map: GameMap): void {
+    // Only render once if not already rendered
+    if (this.mapGraphics) {
+      return;
+    }
+
+    this.mapGraphics = new Graphics();
+    this.mapLayer.addChild(this.mapGraphics);
+
+    const mapWidth = map.getWidth();
+    const mapHeight = map.getHeight();
+    const tileWidth = this.isoConfig.tileWidth;
+    const tileHeight = this.isoConfig.tileHeight;
+
+    // Render each tile
+    for (let y = 0; y < mapHeight; y++) {
+      for (let x = 0; x < mapWidth; x++) {
+        const height = map.getTileHeight(x, y);
+        const { isoX, isoY } = gridToIso(x, y, height, this.isoConfig);
+
+        // Draw isometric diamond tile with grass color
+        this.mapGraphics
+          .moveTo(isoX + tileWidth / 2, isoY)
+          .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
+          .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
+          .lineTo(isoX, isoY + tileHeight / 2)
+          .lineTo(isoX + tileWidth / 2, isoY)
+          .fill(PixiRenderer.GRASS_COLOR);
+
+        // Draw tile border
+        this.mapGraphics
+          .moveTo(isoX + tileWidth / 2, isoY)
+          .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
+          .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
+          .lineTo(isoX, isoY + tileHeight / 2)
+          .lineTo(isoX + tileWidth / 2, isoY)
+          .stroke({ width: 1, color: PixiRenderer.TILE_BORDER_COLOR });
+      }
+    }
+  }
+
+  /**
+   * Set up hover listener for tile hover effect
+   */
+  private setupHoverListener(): void {
+    this.app.canvas.addEventListener('mousemove', this.handleMouseMove);
+  }
+
+  /**
+   * Handle mouse move for tile hover effect
+   */
+  private handleMouseMove = (event: MouseEvent): void => {
+    const rect = this.app.canvas.getBoundingClientRect();
+    const canvasX = event.clientX - rect.left;
+    const canvasY = event.clientY - rect.top;
+
+    // Convert screen coordinates to grid coordinates
+    const { gridX, gridY } = isoToGrid(canvasX, canvasY, this.isoConfig);
+    const tileX = Math.floor(gridX);
+    const tileY = Math.floor(gridY);
+
+    // Update hovered tile
+    if (this.hoveredTile?.x !== tileX || this.hoveredTile?.y !== tileY) {
+      this.hoveredTile = { x: tileX, y: tileY };
+    }
+  };
+
+  /**
+   * Render the hover effect for the currently hovered tile
+   */
+  private renderHoverEffect(map: GameMap): void {
+    // Clear previous hover graphics
+    this.hoverLayer.removeChildren();
+
+    if (!this.hoveredTile) {
+      return;
+    }
+
+    const { x, y } = this.hoveredTile;
+    
+    // Only render hover if within map bounds
+    if (!map.isValidPosition(x, y)) {
+      return;
+    }
+
+    const tileWidth = this.isoConfig.tileWidth;
+    const tileHeight = this.isoConfig.tileHeight;
+    const height = map.getTileHeight(x, y);
+    const { isoX, isoY } = gridToIso(x, y, height, this.isoConfig);
+
+    const hoverGraphics = new Graphics();
+    this.hoverLayer.addChild(hoverGraphics);
+
+    // Draw hover highlight as a semi-transparent white overlay
+    hoverGraphics
+      .moveTo(isoX + tileWidth / 2, isoY)
+      .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
+      .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
+      .lineTo(isoX, isoY + tileHeight / 2)
+      .lineTo(isoX + tileWidth / 2, isoY)
+      .fill({ color: PixiRenderer.TILE_HOVER_COLOR, alpha: 0.2 });
+
+    // Draw thicker border for hover
+    hoverGraphics
+      .moveTo(isoX + tileWidth / 2, isoY)
+      .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
+      .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
+      .lineTo(isoX, isoY + tileHeight / 2)
+      .lineTo(isoX + tileWidth / 2, isoY)
+      .stroke({ width: 2, color: PixiRenderer.TILE_HOVER_COLOR, alpha: 0.6 });
+  }
+
+  /**
    * Clean up resources
    */
   destroy(): void {
     this.clear();
     this.clearOrderVisualizations();
+    this.app.canvas.removeEventListener('mousemove', this.handleMouseMove);
+    this.app.stage.removeChild(this.mapLayer);
     this.app.stage.removeChild(this.gameLayer);
     this.app.stage.removeChild(this.orderVisualizationLayer);
+    this.app.stage.removeChild(this.hoverLayer);
+    this.mapLayer.destroy();
     this.gameLayer.destroy();
     this.orderVisualizationLayer.destroy();
+    this.hoverLayer.destroy();
   }
 }
