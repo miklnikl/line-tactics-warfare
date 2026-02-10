@@ -57,9 +57,13 @@ export class InputHandler {
     // Convert screen coordinates to grid coordinates using the renderer
     // This accounts for the map centering offset
     const { gridX, gridY } = this.renderer.screenToGrid(canvasX, canvasY);
+    
+    // Round to nearest tile center for isometric grid
+    const roundedX = Math.round(gridX);
+    const roundedY = Math.round(gridY);
 
     // Find if any regiment was clicked
-    const clickedRegiment = this.findRegimentAtPosition(gridX, gridY);
+    const clickedRegiment = this.findRegimentAtPosition(roundedX, roundedY);
 
     if (clickedRegiment) {
       // Select the clicked regiment

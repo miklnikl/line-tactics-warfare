@@ -209,11 +209,28 @@ export class CommandPanel {
       // This accounts for the map centering offset
       const { gridX, gridY } = this.renderer.screenToGrid(canvasX, canvasY);
       
-      // Assign MOVE order with target position (rounded to nearest integer)
+      // Round to nearest integer for tile coordinates
+      const targetX = Math.round(gridX);
+      const targetY = Math.round(gridY);
+      
+      // Validate that the target is within map bounds
+      const map = this.gameState.getMap();
+      if (!map.isValidPosition(targetX, targetY)) {
+        console.log(`Invalid target position (${targetX}, ${targetY}) - outside map bounds`);
+        this.statusText.textContent = 'Invalid target - click within the map';
+        this.statusText.style.color = '#ff6b6b';
+        setTimeout(() => {
+          this.statusText.textContent = 'Click on the map to set move target';
+          this.statusText.style.color = '';
+        }, 1500);
+        return;
+      }
+      
+      // Assign MOVE order with validated target position
       const moveOrder: MoveOrder = {
         type: 'MOVE',
-        targetX: Math.round(gridX),
-        targetY: Math.round(gridY)
+        targetX,
+        targetY
       };
       regiment.setOrder(moveOrder);
       

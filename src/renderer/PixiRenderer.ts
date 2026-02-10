@@ -413,8 +413,11 @@ export class PixiRenderer {
 
     // Convert screen coordinates to grid coordinates (accounts for centering offset)
     const { gridX, gridY } = this.screenToGrid(canvasX, canvasY);
-    const tileX = Math.floor(gridX);
-    const tileY = Math.floor(gridY);
+    
+    // Use Math.round() for isometric tiles to get the nearest tile center
+    // This provides better accuracy for isometric projection
+    const tileX = Math.round(gridX);
+    const tileY = Math.round(gridY);
 
     // Update hovered tile only if it changed
     if (!this.hoveredTile || this.hoveredTile.x !== tileX || this.hoveredTile.y !== tileY) {
@@ -436,16 +439,25 @@ export class PixiRenderer {
 
   /**
    * Convert canvas screen coordinates to grid coordinates
-   * This accounts for the map centering offset
+   * This accounts for the map centering offset and tile center offset
    * 
    * @param canvasX - X coordinate relative to canvas
    * @param canvasY - Y coordinate relative to canvas
    * @returns Grid coordinates as { gridX, gridY }
    */
   screenToGrid(canvasX: number, canvasY: number): { gridX: number; gridY: number } {
+    const { tileWidth, tileHeight } = this.isoConfig;
+    
     // Adjust for the layer offset (centering)
-    const adjustedX = canvasX - this.mapLayer.x;
-    const adjustedY = canvasY - this.mapLayer.y;
+    let adjustedX = canvasX - this.mapLayer.x;
+    let adjustedY = canvasY - this.mapLayer.y;
+    
+    // Adjust for the tile center offset
+    // The diamond is drawn with its top point at (isoX + tileWidth/2, isoY)
+    // and its center at (isoX + tileWidth/2, isoY + tileHeight/2)
+    // We need to offset to the tile's origin for accurate conversion
+    adjustedX -= tileWidth / 2;
+    adjustedY -= tileHeight / 2;
 
     // Convert to grid coordinates
     return isoToGrid(adjustedX, adjustedY, this.isoConfig);
