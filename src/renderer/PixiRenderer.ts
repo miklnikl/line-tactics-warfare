@@ -161,23 +161,13 @@ export class PixiRenderer {
     const fillColor = isSelected ? 0xffff00 : 0xff0000; // Yellow for selected, red for unselected
     
     // Draw isometric diamond for the regiment
-    graphics
-      .moveTo(isoX + tileWidth / 2, isoY)
-      .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
-      .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
-      .lineTo(isoX, isoY + tileHeight / 2)
-      .lineTo(isoX + tileWidth / 2, isoY)
-      .fill(fillColor);
+    this.drawIsoDiamond(graphics, isoX, isoY, tileWidth, tileHeight);
+    graphics.fill(fillColor);
     
     // Add a border to selected units for extra visibility
     if (isSelected) {
-      graphics
-        .moveTo(isoX + tileWidth / 2, isoY)
-        .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
-        .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
-        .lineTo(isoX, isoY + tileHeight / 2)
-        .lineTo(isoX + tileWidth / 2, isoY)
-        .stroke({ width: 2, color: 0xffffff }); // White border
+      this.drawIsoDiamond(graphics, isoX, isoY, tileWidth, tileHeight);
+      graphics.stroke({ width: 2, color: 0xffffff }); // White border
     }
   }
 
@@ -347,22 +337,12 @@ export class PixiRenderer {
         const { isoX, isoY } = gridToIso(x, y, height, this.isoConfig);
 
         // Draw isometric diamond tile with grass color
-        this.mapGraphics
-          .moveTo(isoX + tileWidth / 2, isoY)
-          .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
-          .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
-          .lineTo(isoX, isoY + tileHeight / 2)
-          .lineTo(isoX + tileWidth / 2, isoY)
-          .fill(PixiRenderer.GRASS_COLOR);
+        this.drawIsoDiamond(this.mapGraphics, isoX, isoY, tileWidth, tileHeight);
+        this.mapGraphics.fill(PixiRenderer.GRASS_COLOR);
 
         // Draw tile border
-        this.mapGraphics
-          .moveTo(isoX + tileWidth / 2, isoY)
-          .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
-          .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
-          .lineTo(isoX, isoY + tileHeight / 2)
-          .lineTo(isoX + tileWidth / 2, isoY)
-          .stroke({ width: 1, color: PixiRenderer.TILE_BORDER_COLOR });
+        this.drawIsoDiamond(this.mapGraphics, isoX, isoY, tileWidth, tileHeight);
+        this.mapGraphics.stroke({ width: 1, color: PixiRenderer.TILE_BORDER_COLOR });
       }
     }
   }
@@ -387,11 +367,23 @@ export class PixiRenderer {
     const tileX = Math.floor(gridX);
     const tileY = Math.floor(gridY);
 
-    // Update hovered tile
-    if (this.hoveredTile?.x !== tileX || this.hoveredTile?.y !== tileY) {
+    // Update hovered tile only if it changed
+    if (!this.hoveredTile || this.hoveredTile.x !== tileX || this.hoveredTile.y !== tileY) {
       this.hoveredTile = { x: tileX, y: tileY };
     }
   };
+
+  /**
+   * Helper method to draw an isometric diamond shape
+   */
+  private drawIsoDiamond(graphics: Graphics, isoX: number, isoY: number, tileWidth: number, tileHeight: number): void {
+    graphics
+      .moveTo(isoX + tileWidth / 2, isoY)
+      .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
+      .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
+      .lineTo(isoX, isoY + tileHeight / 2)
+      .lineTo(isoX + tileWidth / 2, isoY);
+  }
 
   /**
    * Render the hover effect for the currently hovered tile
@@ -420,22 +412,12 @@ export class PixiRenderer {
     this.hoverLayer.addChild(hoverGraphics);
 
     // Draw hover highlight as a semi-transparent white overlay
-    hoverGraphics
-      .moveTo(isoX + tileWidth / 2, isoY)
-      .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
-      .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
-      .lineTo(isoX, isoY + tileHeight / 2)
-      .lineTo(isoX + tileWidth / 2, isoY)
-      .fill({ color: PixiRenderer.TILE_HOVER_COLOR, alpha: 0.2 });
+    this.drawIsoDiamond(hoverGraphics, isoX, isoY, tileWidth, tileHeight);
+    hoverGraphics.fill({ color: PixiRenderer.TILE_HOVER_COLOR, alpha: 0.2 });
 
     // Draw thicker border for hover
-    hoverGraphics
-      .moveTo(isoX + tileWidth / 2, isoY)
-      .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
-      .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
-      .lineTo(isoX, isoY + tileHeight / 2)
-      .lineTo(isoX + tileWidth / 2, isoY)
-      .stroke({ width: 2, color: PixiRenderer.TILE_HOVER_COLOR, alpha: 0.6 });
+    this.drawIsoDiamond(hoverGraphics, isoX, isoY, tileWidth, tileHeight);
+    hoverGraphics.stroke({ width: 2, color: PixiRenderer.TILE_HOVER_COLOR, alpha: 0.6 });
   }
 
   /**
