@@ -15,7 +15,7 @@ const app = new Application()
 
 // Initialize the application
 await app.init({
-  width: 800,
+  width: 1200,
   height: 600,
   backgroundColor: 0x1099bb
 })
@@ -26,9 +26,9 @@ document.querySelector<HTMLDivElement>('#app')!.appendChild(app.canvas)
 // Create a game map with varied terrain heights
 const gameMap = new GameMap(20, 20)
 // Set some elevated terrain for visual demonstration
-gameMap.setTileHeight(2, 3, 20)
+gameMap.setTileHeight(1, 1, 20)
 gameMap.setTileHeight(5, 5, 15)
-gameMap.setTileHeight(8, 2, 25)
+gameMap.setTileHeight(19, 19, 25)
 
 // Initialize game logic (independent of PixiJS)
 const gameState = new GameState(gameMap)
@@ -53,14 +53,14 @@ const gameLoop = new GameLoop(gameState, turnSimulator)
 const renderer = new PixiRenderer(app)
 
 // Initialize the input handler (instantiated for its event listener setup)
-const inputHandler = new InputHandler(app, gameState, regiments)
+const inputHandler = new InputHandler(app, gameState, regiments, renderer)
 void inputHandler // Suppress unused variable warning
 
 // Initialize the regiment info panel
 const regimentInfoPanel = new RegimentInfoPanel(gameState, regiments)
 
 // Initialize the command panel
-const commandPanel = new CommandPanel(gameState, regiments, app)
+const commandPanel = new CommandPanel(gameState, regiments, app, renderer)
 
 // Render the initial state
 renderer.render(gameState, regiments)

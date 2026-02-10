@@ -1,7 +1,7 @@
 import type { Application } from 'pixi.js';
 import type { GameState } from '../game/GameState.ts';
 import type { Regiment } from '../game/Regiment.ts';
-import { isoToGrid, type IsoConfig, DEFAULT_ISO_CONFIG } from '../utils/iso.ts';
+import type { PixiRenderer } from '../renderer/PixiRenderer.ts';
 
 /**
  * InputHandler manages user input for the game.
@@ -16,18 +16,18 @@ export class InputHandler {
   private app: Application;
   private gameState: GameState;
   private regiments: Regiment[];
-  private isoConfig: IsoConfig;
+  private renderer: PixiRenderer;
 
   constructor(
     app: Application,
     gameState: GameState,
     regiments: Regiment[],
-    isoConfig: IsoConfig = DEFAULT_ISO_CONFIG
+    renderer: PixiRenderer
   ) {
     this.app = app;
     this.gameState = gameState;
     this.regiments = regiments;
-    this.isoConfig = isoConfig;
+    this.renderer = renderer;
 
     this.setupEventListeners();
   }
@@ -54,8 +54,9 @@ export class InputHandler {
     const canvasX = event.clientX - rect.left;
     const canvasY = event.clientY - rect.top;
 
-    // Convert screen coordinates to grid coordinates
-    const { gridX, gridY } = isoToGrid(canvasX, canvasY, this.isoConfig);
+    // Convert screen coordinates to grid coordinates using the renderer
+    // This accounts for the map centering offset
+    const { gridX, gridY } = this.renderer.screenToGrid(canvasX, canvasY);
 
     // Find if any regiment was clicked
     const clickedRegiment = this.findRegimentAtPosition(gridX, gridY);

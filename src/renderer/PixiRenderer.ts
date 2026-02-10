@@ -59,6 +59,44 @@ export class PixiRenderer {
   }
 
   /**
+   * Calculate the bounds of an isometric map and return centering offset
+   * @param mapWidth - Width of the map in grid tiles
+   * @param mapHeight - Height of the map in grid tiles
+   * @returns Object with offsetX and offsetY to center the map
+   */
+  private calculateMapCenterOffset(mapWidth: number, mapHeight: number): { offsetX: number; offsetY: number } {
+    const { tileWidth, tileHeight } = this.isoConfig;
+    
+    // Calculate the corners of the isometric map in screen space
+    // Top corner: grid (0, 0)
+    const topCorner = gridToIso(0, 0, 0, this.isoConfig);
+    
+    // Right corner: grid (mapWidth - 1, 0)
+    const rightCorner = gridToIso(mapWidth - 1, 0, 0, this.isoConfig);
+    
+    // Bottom corner: grid (mapWidth - 1, mapHeight - 1)
+    const bottomCorner = gridToIso(mapWidth - 1, mapHeight - 1, 0, this.isoConfig);
+    
+    // Left corner: grid (0, mapHeight - 1)
+    const leftCorner = gridToIso(0, mapHeight - 1, 0, this.isoConfig);
+    
+    // Calculate bounds (accounting for tile dimensions)
+    const minX = leftCorner.isoX - tileWidth / 2;
+    const maxX = rightCorner.isoX + tileWidth / 2;
+    const minY = topCorner.isoY;
+    const maxY = bottomCorner.isoY + tileHeight;
+    
+    const mapWidthPixels = maxX - minX;
+    const mapHeightPixels = maxY - minY;
+    
+    // Calculate offset to center the map in the viewport
+    const offsetX = (this.app.screen.width - mapWidthPixels) / 2 - minX;
+    const offsetY = (this.app.screen.height - mapHeightPixels) / 2 - minY;
+    
+    return { offsetX, offsetY };
+  }
+
+  /**
    * Get the PixiJS application instance
    */
   getApplication(): Application {
@@ -330,6 +368,17 @@ export class PixiRenderer {
     const tileWidth = this.isoConfig.tileWidth;
     const tileHeight = this.isoConfig.tileHeight;
 
+    // Calculate and apply centering offset
+    const { offsetX, offsetY } = this.calculateMapCenterOffset(mapWidth, mapHeight);
+    this.mapLayer.x = offsetX;
+    this.mapLayer.y = offsetY;
+    this.gameLayer.x = offsetX;
+    this.gameLayer.y = offsetY;
+    this.orderVisualizationLayer.x = offsetX;
+    this.orderVisualizationLayer.y = offsetY;
+    this.hoverLayer.x = offsetX;
+    this.hoverLayer.y = offsetY;
+
     // Render each tile
     for (let y = 0; y < mapHeight; y++) {
       for (let x = 0; x < mapWidth; x++) {
@@ -362,8 +411,8 @@ export class PixiRenderer {
     const canvasX = event.clientX - rect.left;
     const canvasY = event.clientY - rect.top;
 
-    // Convert screen coordinates to grid coordinates
-    const { gridX, gridY } = isoToGrid(canvasX, canvasY, this.isoConfig);
+    // Convert screen coordinates to grid coordinates (accounts for centering offset)
+    const { gridX, gridY } = this.screenToGrid(canvasX, canvasY);
     const tileX = Math.floor(gridX);
     const tileY = Math.floor(gridY);
 
@@ -383,6 +432,23 @@ export class PixiRenderer {
       .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
       .lineTo(isoX, isoY + tileHeight / 2)
       .lineTo(isoX + tileWidth / 2, isoY);
+  }
+
+  /**
+   * Convert canvas screen coordinates to grid coordinates
+   * This accounts for the map centering offset
+   * 
+   * @param canvasX - X coordinate relative to canvas
+   * @param canvasY - Y coordinate relative to canvas
+   * @returns Grid coordinates as { gridX, gridY }
+   */
+  screenToGrid(canvasX: number, canvasY: number): { gridX: number; gridY: number } {
+    // Adjust for the layer offset (centering)
+    const adjustedX = canvasX - this.mapLayer.x;
+    const adjustedY = canvasY - this.mapLayer.y;
+
+    // Convert to grid coordinates
+    return isoToGrid(adjustedX, adjustedY, this.isoConfig);
   }
 
   /**
