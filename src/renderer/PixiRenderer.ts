@@ -25,6 +25,16 @@ export class PixiRenderer {
   private isoConfig: IsoConfig;
   private mapGraphics: Graphics | null;
   private hoveredTile: { x: number; y: number } | null;
+  
+  // Camera offset for panning
+  private cameraOffsetX: number = 0;
+  private cameraOffsetY: number = 0;
+  private initialOffsetX: number = 0;
+  private initialOffsetY: number = 0;
+  
+  // Keyboard state for smooth scrolling
+  private keysPressed: Set<string> = new Set();
+  private static readonly SCROLL_SPEED = 5; // pixels per frame
 
   // Visual constants for order visualization
   private static readonly UNIT_CENTER_OFFSET_X = 32; // Half of tile width (64/2)
@@ -56,6 +66,9 @@ export class PixiRenderer {
     
     // Set up mouse move listener for hover effect
     this.setupHoverListener();
+    
+    // Set up keyboard listeners for camera panning
+    this.setupKeyboardListeners();
   }
 
   /**
@@ -370,14 +383,9 @@ export class PixiRenderer {
 
     // Calculate and apply centering offset
     const { offsetX, offsetY } = this.calculateMapCenterOffset(mapWidth, mapHeight);
-    this.mapLayer.x = offsetX;
-    this.mapLayer.y = offsetY;
-    this.gameLayer.x = offsetX;
-    this.gameLayer.y = offsetY;
-    this.orderVisualizationLayer.x = offsetX;
-    this.orderVisualizationLayer.y = offsetY;
-    this.hoverLayer.x = offsetX;
-    this.hoverLayer.y = offsetY;
+    this.initialOffsetX = offsetX;
+    this.initialOffsetY = offsetY;
+    this.updateLayerPositions();
 
     // Render each tile
     for (let y = 0; y < mapHeight; y++) {
@@ -401,6 +409,82 @@ export class PixiRenderer {
    */
   private setupHoverListener(): void {
     this.app.canvas.addEventListener('mousemove', this.handleMouseMove);
+  }
+
+  /**
+   * Set up keyboard listeners for camera panning
+   */
+  private setupKeyboardListeners(): void {
+    document.addEventListener('keydown', this.handleKeyDown);
+    document.addEventListener('keyup', this.handleKeyUp);
+  }
+
+  /**
+   * Handle keydown events for camera panning
+   */
+  private handleKeyDown = (event: KeyboardEvent): void => {
+    const key = event.key.toLowerCase();
+    
+    // Arrow keys or WASD for panning
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
+      this.keysPressed.add(key);
+      event.preventDefault(); // Prevent page scrolling
+    }
+  };
+
+  /**
+   * Handle keyup events for camera panning
+   */
+  private handleKeyUp = (event: KeyboardEvent): void => {
+    const key = event.key.toLowerCase();
+    this.keysPressed.delete(key);
+  };
+
+  /**
+   * Update camera position based on currently pressed keys
+   * This should be called every frame
+   */
+  updateCamera(): void {
+    let deltaX = 0;
+    let deltaY = 0;
+
+    // Check which keys are pressed and accumulate movement
+    if (this.keysPressed.has('arrowleft') || this.keysPressed.has('a')) {
+      deltaX += PixiRenderer.SCROLL_SPEED;
+    }
+    if (this.keysPressed.has('arrowright') || this.keysPressed.has('d')) {
+      deltaX -= PixiRenderer.SCROLL_SPEED;
+    }
+    if (this.keysPressed.has('arrowup') || this.keysPressed.has('w')) {
+      deltaY += PixiRenderer.SCROLL_SPEED;
+    }
+    if (this.keysPressed.has('arrowdown') || this.keysPressed.has('s')) {
+      deltaY -= PixiRenderer.SCROLL_SPEED;
+    }
+
+    // Update camera offset
+    if (deltaX !== 0 || deltaY !== 0) {
+      this.cameraOffsetX += deltaX;
+      this.cameraOffsetY += deltaY;
+      this.updateLayerPositions();
+    }
+  }
+
+  /**
+   * Update all layer positions based on camera offset
+   */
+  private updateLayerPositions(): void {
+    const totalOffsetX = this.initialOffsetX + this.cameraOffsetX;
+    const totalOffsetY = this.initialOffsetY + this.cameraOffsetY;
+    
+    this.mapLayer.x = totalOffsetX;
+    this.mapLayer.y = totalOffsetY;
+    this.gameLayer.x = totalOffsetX;
+    this.gameLayer.y = totalOffsetY;
+    this.orderVisualizationLayer.x = totalOffsetX;
+    this.orderVisualizationLayer.y = totalOffsetY;
+    this.hoverLayer.x = totalOffsetX;
+    this.hoverLayer.y = totalOffsetY;
   }
 
   /**
@@ -505,6 +589,8 @@ export class PixiRenderer {
     this.clear();
     this.clearOrderVisualizations();
     this.app.canvas.removeEventListener('mousemove', this.handleMouseMove);
+    document.removeEventListener('keydown', this.handleKeyDown);
+    document.removeEventListener('keyup', this.handleKeyUp);
     this.app.stage.removeChild(this.mapLayer);
     this.app.stage.removeChild(this.gameLayer);
     this.app.stage.removeChild(this.orderVisualizationLayer);

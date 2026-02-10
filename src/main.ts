@@ -87,6 +87,9 @@ function syncRegimentsToGameState(): void {
 
 // Add a ticker to continuously render the game state
 app.ticker.add(() => {
+  // Update camera position based on keyboard input
+  renderer.updateCamera()
+  
   // Sync positions before rendering
   syncRegimentsToGameState()
   renderer.render(gameState, regiments)
@@ -106,6 +109,11 @@ console.log('Game loop started!')
 console.log('Current phase:', gameState.getPhase())
 console.log('Map dimensions:', gameState.getMap().getWidth(), 'x', gameState.getMap().getHeight())
 console.log('Regiments created:', regiments.map(r => ({ id: r.getId(), x: r.getX(), y: r.getY() })))
+console.log('\nControls:')
+console.log('- Arrow keys or WASD: Pan camera')
+console.log('- Click regiment: Select unit')
+console.log('- MOVE button: Enter move mode, then click destination')
+console.log('- HOLD button: Issue hold order')
 console.log('\nTo test WEGO turn:')
 console.log('1. Press "M" to assign a MoveOrder to regiment-1')
 console.log('2. Click "End Turn" button or press "S" to start simulation')
