@@ -3,6 +3,7 @@ import type { Regiment } from '../game/Regiment.ts';
 import type { MoveOrder, HoldOrder } from '../game/Order.ts';
 import type { Application } from 'pixi.js';
 import type { PixiRenderer } from '../renderer/PixiRenderer.ts';
+import { gridToIso, DEFAULT_ISO_CONFIG } from '../utils/iso.ts';
 
 /**
  * CommandPanel provides UI controls to issue orders to the selected regiment.
@@ -24,9 +25,15 @@ export class CommandPanel {
   private holdButton: HTMLButtonElement;
   private cancelButton: HTMLButtonElement;
   private statusText: HTMLElement;
-  private canvasClickHandler: (event: MouseEvent) => void;
-  private canvasContextMenuHandler: (event: MouseEvent) => void;
-  private keydownHandler: (event: KeyboardEvent) => void;
+  private canvasClickHandler!: (event: MouseEvent) => void;
+  private canvasContextMenuHandler!: (event: MouseEvent) => void;
+  private keydownHandler!: (event: KeyboardEvent) => void;
+  
+  // On-canvas command icons
+  private canvasIconsElement: HTMLElement;
+  private canvasMoveButton: HTMLButtonElement;
+  private canvasHoldButton: HTMLButtonElement;
+  private canvasCancelButton: HTMLButtonElement;
 
   constructor(gameState: GameState, regiments: Regiment[], app: Application, renderer: PixiRenderer) {
     this.gameState = gameState;
@@ -41,6 +48,13 @@ export class CommandPanel {
     }
     this.panelElement = panel;
     
+    // Get the canvas icons element from the DOM
+    const canvasIcons = document.getElementById('canvas-command-icons');
+    if (!canvasIcons) {
+      throw new Error('Canvas command icons element not found in DOM');
+    }
+    this.canvasIconsElement = canvasIcons as HTMLElement;
+    
     // Create UI elements
     this.moveButton = this.createButton('MOVE', () => this.handleMoveCommand());
     this.holdButton = this.createButton('HOLD', () => this.handleHoldCommand());
@@ -50,8 +64,14 @@ export class CommandPanel {
     this.statusText = document.createElement('div');
     this.statusText.className = 'command-status';
     
+    // Create canvas command buttons
+    this.canvasMoveButton = this.createCanvasButton('M', () => this.handleMoveCommand());
+    this.canvasHoldButton = this.createCanvasButton('H', () => this.handleHoldCommand());
+    this.canvasCancelButton = this.createCanvasButton('X', () => this.cancelMoveMode());
+    
     // Build panel structure
     this.buildPanel();
+    this.buildCanvasIcons();
     
     // Set up canvas click listener for move target selection
     this.setupCanvasClickListener();
@@ -70,6 +90,18 @@ export class CommandPanel {
     const button = document.createElement('button');
     button.className = 'command-button';
     button.textContent = text;
+    button.addEventListener('click', onClick);
+    return button;
+  }
+
+  /**
+   * Create a canvas button element
+   */
+  private createCanvasButton(text: string, onClick: () => void): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.className = 'canvas-command-button';
+    button.textContent = text;
+    button.title = text === 'M' ? 'MOVE' : text === 'H' ? 'HOLD' : 'Cancel';
     button.addEventListener('click', onClick);
     return button;
   }
@@ -96,6 +128,19 @@ export class CommandPanel {
   }
 
   /**
+   * Build the canvas icons structure
+   */
+  private buildCanvasIcons(): void {
+    // Clear existing content
+    this.canvasIconsElement.innerHTML = '';
+    
+    // Add canvas buttons
+    this.canvasIconsElement.appendChild(this.canvasMoveButton);
+    this.canvasIconsElement.appendChild(this.canvasHoldButton);
+    this.canvasIconsElement.appendChild(this.canvasCancelButton);
+  }
+
+  /**
    * Update the panel based on current game state
    */
   update(): void {
@@ -105,11 +150,15 @@ export class CommandPanel {
     // Show panel only when a regiment is selected and in PLANNING phase
     if (phase !== 'PLANNING' || !selectedId) {
       this.panelElement.style.display = 'none';
+      this.canvasIconsElement.style.display = 'none';
       this.moveMode = false;
       return;
     }
     
     this.panelElement.style.display = 'block';
+    
+    // Position and show canvas icons next to the selected regiment
+    this.updateCanvasIconsPosition(selectedId);
     
     // Update button states
     if (this.moveMode) {
@@ -118,12 +167,74 @@ export class CommandPanel {
       this.cancelButton.style.display = 'block';
       this.statusText.textContent = 'Click on the map to set move target';
       this.statusText.style.display = 'block';
+      
+      // Update canvas buttons for move mode
+      this.canvasMoveButton.style.display = 'none';
+      this.canvasHoldButton.style.display = 'none';
+      this.canvasCancelButton.style.display = 'flex';
+      this.canvasCancelButton.classList.add('active');
     } else {
       this.moveButton.style.display = 'block';
       this.holdButton.style.display = 'block';
       this.cancelButton.style.display = 'none';
       this.statusText.style.display = 'none';
+      
+      // Update canvas buttons for normal mode
+      this.canvasMoveButton.style.display = 'flex';
+      this.canvasHoldButton.style.display = 'flex';
+      this.canvasCancelButton.style.display = 'none';
+      this.canvasCancelButton.classList.remove('active');
     }
+  }
+
+  /**
+   * Update canvas icons position next to the selected regiment
+   */
+  private updateCanvasIconsPosition(selectedId: string): void {
+    const regiment = this.regimentMap.get(selectedId);
+    if (!regiment) {
+      this.canvasIconsElement.style.display = 'none';
+      return;
+    }
+
+    // Get regiment position
+    const regimentX = regiment.getX();
+    const regimentY = regiment.getY();
+    const map = this.gameState.getMap();
+    let regimentHeight = 0;
+    const regimentTileX = Math.floor(regimentX);
+    const regimentTileY = Math.floor(regimentY);
+    
+    if (map.isValidPosition(regimentTileX, regimentTileY)) {
+      regimentHeight = map.getTileHeight(regimentTileX, regimentTileY);
+    }
+
+    // Convert grid coordinates to screen coordinates
+    const screenPos = this.gridToScreen(regimentX, regimentY, regimentHeight);
+    
+    // Position the icons to the right of the regiment
+    const offsetX = 80; // Offset to the right
+    const offsetY = 0;  // Vertically centered
+    
+    this.canvasIconsElement.style.display = 'flex';
+    this.canvasIconsElement.style.left = `${screenPos.x + offsetX}px`;
+    this.canvasIconsElement.style.top = `${screenPos.y + offsetY}px`;
+  }
+
+  /**
+   * Convert grid coordinates to screen coordinates
+   */
+  private gridToScreen(gridX: number, gridY: number, height: number): { x: number; y: number } {
+    // Use the gridToIso utility to convert grid to isometric coordinates
+    const { isoX, isoY } = gridToIso(gridX, gridY, height, DEFAULT_ISO_CONFIG);
+    
+    // Calculate screen position accounting for camera offset
+    // The renderer has the game layer position which includes camera and centering offsets
+    const gameLayer = this.renderer.getGameLayer();
+    const screenX = isoX + gameLayer.x + 32; // Center of tile
+    const screenY = isoY + gameLayer.y + 16; // Center of tile
+    
+    return { x: screenX, y: screenY };
   }
 
   /**
@@ -140,6 +251,25 @@ export class CommandPanel {
     }
     
     // Enter move mode - wait for canvas click to set target
+    this.moveMode = true;
+    this.update();
+  }
+
+  /**
+   * Auto-select move command when regiment is selected
+   * This should be called when a regiment is selected
+   */
+  autoSelectMoveCommand(): void {
+    if (this.gameState.getPhase() !== 'PLANNING') {
+      return;
+    }
+    
+    const selectedId = this.gameState.getSelectedRegimentId();
+    if (!selectedId) {
+      return;
+    }
+    
+    // Auto-enter move mode
     this.moveMode = true;
     this.update();
   }

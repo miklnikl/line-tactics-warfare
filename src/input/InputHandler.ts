@@ -2,6 +2,7 @@ import type { Application } from 'pixi.js';
 import type { GameState } from '../game/GameState.ts';
 import type { Regiment } from '../game/Regiment.ts';
 import type { PixiRenderer } from '../renderer/PixiRenderer.ts';
+import type { CommandPanel } from '../ui/CommandPanel.ts';
 
 /**
  * InputHandler manages user input for the game.
@@ -17,6 +18,7 @@ export class InputHandler {
   private gameState: GameState;
   private regiments: Regiment[];
   private renderer: PixiRenderer;
+  private commandPanel: CommandPanel | null = null;
 
   constructor(
     app: Application,
@@ -30,6 +32,13 @@ export class InputHandler {
     this.renderer = renderer;
 
     this.setupEventListeners();
+  }
+
+  /**
+   * Set the command panel reference for auto-selecting move command
+   */
+  setCommandPanel(commandPanel: CommandPanel): void {
+    this.commandPanel = commandPanel;
   }
 
   /**
@@ -68,6 +77,11 @@ export class InputHandler {
     if (clickedRegiment) {
       // Select the clicked regiment
       this.gameState.setSelectedRegimentId(clickedRegiment.getId());
+      
+      // Auto-select move command when regiment is selected
+      if (this.commandPanel) {
+        this.commandPanel.autoSelectMoveCommand();
+      }
     } else {
       // Clear selection if clicking empty space
       this.gameState.setSelectedRegimentId(null);

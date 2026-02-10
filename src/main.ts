@@ -54,13 +54,15 @@ const renderer = new PixiRenderer(app)
 
 // Initialize the input handler (instantiated for its event listener setup)
 const inputHandler = new InputHandler(app, gameState, regiments, renderer)
-void inputHandler // Suppress unused variable warning
 
 // Initialize the regiment info panel
 const regimentInfoPanel = new RegimentInfoPanel(gameState, regiments)
 
 // Initialize the command panel
 const commandPanel = new CommandPanel(gameState, regiments, app, renderer)
+
+// Set the command panel reference in the input handler for auto-select move
+inputHandler.setCommandPanel(commandPanel)
 
 // Render the initial state
 renderer.render(gameState, regiments)

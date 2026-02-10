@@ -116,7 +116,7 @@ button:disabled,
 /* Regiment Info Panel Styles */
 .info-panel {
   position: fixed;
-  top: 20px;
+  top: 80px;
   right: 20px;
   background-color: rgba(26, 26, 26, 0.95);
   border: 2px solid #646cff;
@@ -170,14 +170,13 @@ button:disabled,
 /* Command Panel Styles */
 .command-panel {
   position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 320px;
+  right: 20px;
   background-color: rgba(26, 26, 26, 0.95);
   border: 2px solid #646cff;
   border-radius: 8px;
   padding: 16px;
-  min-width: 300px;
+  min-width: 250px;
   color: rgba(255, 255, 255, 0.87);
   font-family: 'Courier New', monospace;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
@@ -323,5 +322,74 @@ button:disabled,
   .phase-indicator.phase-simulation {
     border-color: #ff8c00;
     color: #ff8c00;
+  }
+}
+
+/* On-canvas Command Icons Styles */
+.canvas-command-icons {
+  position: fixed;
+  display: none;
+  flex-direction: row;
+  gap: 8px;
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+.canvas-command-button {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid #646cff;
+  background-color: rgba(26, 26, 26, 0.95);
+  color: rgba(255, 255, 255, 0.87);
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: all 0.25s;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.canvas-command-button:hover {
+  background-color: #646cff;
+  transform: scale(1.1);
+}
+
+.canvas-command-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #4a4a4a;
+}
+
+.canvas-command-button.active {
+  background-color: #646cff;
+  border-color: #ffffff;
+}
+
+@media (prefers-color-scheme: light) {
+  .canvas-command-button {
+    background-color: rgba(249, 249, 249, 0.95);
+    border-color: #535bf2;
+    color: #213547;
+  }
+
+  .canvas-command-button:hover {
+    background-color: #535bf2;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  .canvas-command-button:disabled {
+    background-color: #cccccc;
+  }
+
+  .canvas-command-button.active {
+    background-color: #535bf2;
+    color: rgba(255, 255, 255, 0.95);
+    border-color: #213547;
   }
 }
