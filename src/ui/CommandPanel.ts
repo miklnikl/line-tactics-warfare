@@ -34,6 +34,12 @@ export class CommandPanel {
   private canvasMoveButton: HTMLButtonElement;
   private canvasHoldButton: HTMLButtonElement;
   private canvasCancelButton: HTMLButtonElement;
+  
+  // Visual constants for canvas icon positioning
+  private static readonly CANVAS_ICON_OFFSET_X = 80; // Offset to the right
+  private static readonly CANVAS_ICON_OFFSET_Y = 0;  // Vertically centered
+  private static readonly TILE_CENTER_OFFSET_X = 32; // Half of DEFAULT_ISO_CONFIG.tileWidth
+  private static readonly TILE_CENTER_OFFSET_Y = 16; // Half of DEFAULT_ISO_CONFIG.tileHeight
 
   constructor(gameState: GameState, regiments: Regiment[], app: Application, renderer: PixiRenderer) {
     this.gameState = gameState;
@@ -213,12 +219,9 @@ export class CommandPanel {
     const screenPos = this.gridToScreen(regimentX, regimentY, regimentHeight);
     
     // Position the icons to the right of the regiment
-    const offsetX = 80; // Offset to the right
-    const offsetY = 0;  // Vertically centered
-    
     this.canvasIconsElement.style.display = 'flex';
-    this.canvasIconsElement.style.left = `${screenPos.x + offsetX}px`;
-    this.canvasIconsElement.style.top = `${screenPos.y + offsetY}px`;
+    this.canvasIconsElement.style.left = `${screenPos.x + CommandPanel.CANVAS_ICON_OFFSET_X}px`;
+    this.canvasIconsElement.style.top = `${screenPos.y + CommandPanel.CANVAS_ICON_OFFSET_Y}px`;
   }
 
   /**
@@ -231,8 +234,8 @@ export class CommandPanel {
     // Calculate screen position accounting for camera offset
     // The renderer has the game layer position which includes camera and centering offsets
     const gameLayer = this.renderer.getGameLayer();
-    const screenX = isoX + gameLayer.x + 32; // Center of tile
-    const screenY = isoY + gameLayer.y + 16; // Center of tile
+    const screenX = isoX + gameLayer.x + CommandPanel.TILE_CENTER_OFFSET_X;
+    const screenY = isoY + gameLayer.y + CommandPanel.TILE_CENTER_OFFSET_Y;
     
     return { x: screenX, y: screenY };
   }
