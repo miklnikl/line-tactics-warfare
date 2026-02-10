@@ -4,7 +4,7 @@ import type { GameMap } from '../game/GameMap.ts';
 import type { Unit } from '../game/Unit.ts';
 import type { Regiment } from '../game/Regiment.ts';
 import type { MoveOrder } from '../game/Order.ts';
-import { gridToIso, type IsoConfig, DEFAULT_ISO_CONFIG } from '../utils/iso.ts';
+import { gridToIso, isoToGrid, type IsoConfig, DEFAULT_ISO_CONFIG } from '../utils/iso.ts';
 
 /**
  * PixiRenderer is responsible for drawing the current GameState using PixiJS.
@@ -17,28 +17,96 @@ import { gridToIso, type IsoConfig, DEFAULT_ISO_CONFIG } from '../utils/iso.ts';
  */
 export class PixiRenderer {
   private app: Application;
+  private mapLayer: Container;
   private gameLayer: Container;
   private unitGraphics: Map<string, Graphics>;
   private orderVisualizationLayer: Container;
+  private hoverLayer: Container;
   private isoConfig: IsoConfig;
+  private mapGraphics: Graphics | null;
+  private hoveredTile: { x: number; y: number } | null;
+  
+  // Camera offset for panning
+  private cameraOffsetX: number = 0;
+  private cameraOffsetY: number = 0;
+  private initialOffsetX: number = 0;
+  private initialOffsetY: number = 0;
+  
+  // Keyboard state for smooth scrolling
+  private keysPressed: Set<string> = new Set();
+  private static readonly SCROLL_SPEED = 5; // pixels per frame
 
   // Visual constants for order visualization
-  private static readonly UNIT_CENTER_OFFSET_X = 15; // Half of unit width (30/2)
-  private static readonly UNIT_CENTER_OFFSET_Y = 15; // Half of unit height (30/2)
+  private static readonly UNIT_CENTER_OFFSET_X = 32; // Half of tile width (64/2)
+  private static readonly UNIT_CENTER_OFFSET_Y = 16; // Half of tile height (32/2)
   private static readonly ARROW_HEAD_SIZE = 10;
   private static readonly HOLD_ORDER_CIRCLE_RADIUS = 25;
 
+  // Visual constants for tiles
+  private static readonly GRASS_COLOR = 0x85EC0D; // #85EC0D
+  private static readonly TILE_BORDER_COLOR = 0xB9FF6C; // #B9FF6C
+  private static readonly TILE_HOVER_COLOR = 0xFFFFFF; // White highlight
+
   constructor(app: Application, isoConfig: IsoConfig = DEFAULT_ISO_CONFIG) {
     this.app = app;
+    this.mapLayer = new Container();
     this.gameLayer = new Container();
     this.unitGraphics = new Map();
     this.orderVisualizationLayer = new Container();
+    this.hoverLayer = new Container();
     this.isoConfig = isoConfig;
+    this.mapGraphics = null;
+    this.hoveredTile = null;
     
-    // Add the game layer to the stage
+    // Add layers to the stage in order (bottom to top)
+    this.app.stage.addChild(this.mapLayer);
     this.app.stage.addChild(this.gameLayer);
-    // Add the order visualization layer on top
     this.app.stage.addChild(this.orderVisualizationLayer);
+    this.app.stage.addChild(this.hoverLayer);
+    
+    // Set up mouse move listener for hover effect
+    this.setupHoverListener();
+    
+    // Set up keyboard listeners for camera panning
+    this.setupKeyboardListeners();
+  }
+
+  /**
+   * Calculate the bounds of an isometric map and return centering offset
+   * @param mapWidth - Width of the map in grid tiles
+   * @param mapHeight - Height of the map in grid tiles
+   * @returns Object with offsetX and offsetY to center the map
+   */
+  private calculateMapCenterOffset(mapWidth: number, mapHeight: number): { offsetX: number; offsetY: number } {
+    const { tileWidth, tileHeight } = this.isoConfig;
+    
+    // Calculate the corners of the isometric map in screen space
+    // Top corner: grid (0, 0)
+    const topCorner = gridToIso(0, 0, 0, this.isoConfig);
+    
+    // Right corner: grid (mapWidth - 1, 0)
+    const rightCorner = gridToIso(mapWidth - 1, 0, 0, this.isoConfig);
+    
+    // Bottom corner: grid (mapWidth - 1, mapHeight - 1)
+    const bottomCorner = gridToIso(mapWidth - 1, mapHeight - 1, 0, this.isoConfig);
+    
+    // Left corner: grid (0, mapHeight - 1)
+    const leftCorner = gridToIso(0, mapHeight - 1, 0, this.isoConfig);
+    
+    // Calculate bounds (accounting for tile dimensions)
+    const minX = leftCorner.isoX - tileWidth / 2;
+    const maxX = rightCorner.isoX + tileWidth / 2;
+    const minY = topCorner.isoY;
+    const maxY = bottomCorner.isoY + tileHeight;
+    
+    const mapWidthPixels = maxX - minX;
+    const mapHeightPixels = maxY - minY;
+    
+    // Calculate offset to center the map in the viewport
+    const offsetX = (this.app.screen.width - mapWidthPixels) / 2 - minX;
+    const offsetY = (this.app.screen.height - mapHeightPixels) / 2 - minY;
+    
+    return { offsetX, offsetY };
   }
 
   /**
@@ -68,6 +136,12 @@ export class PixiRenderer {
     const selectedRegimentId = gameState.getSelectedRegimentId();
     const currentUnitIds = new Set<string>();
 
+    // Render the map tiles (only once or when map changes)
+    this.renderMap(map);
+
+    // Render hover effect with map bounds checking
+    this.renderHoverEffect(map);
+
     // Update or create graphics for each unit
     for (const unit of units) {
       currentUnitIds.add(unit.id);
@@ -93,7 +167,7 @@ export class PixiRenderer {
   }
 
   /**
-   * Render a single unit as a rectangle
+   * Render a single unit as an isometric diamond shape
    * Only reads from the unit, does not mutate it
    */
   private renderUnit(unit: Unit, map: GameMap, isSelected: boolean = false): void {
@@ -129,23 +203,22 @@ export class PixiRenderer {
     // The height parameter adjusts the vertical position based on terrain elevation
     const { isoX, isoY } = gridToIso(unit.x, unit.y, height, this.isoConfig);
     
-    // Draw the unit as a simple rectangle
-    // Position is based on isometric coordinates
-    const width = 30;
-    const unitHeight = 30;
+    // Draw the unit as an isometric diamond shape
+    // Use the same dimensions as tiles for consistency
+    const tileWidth = this.isoConfig.tileWidth;
+    const tileHeight = this.isoConfig.tileHeight;
 
     // Use different colors for selected vs unselected units
     const fillColor = isSelected ? 0xffff00 : 0xff0000; // Yellow for selected, red for unselected
     
-    graphics
-      .rect(isoX, isoY, width, unitHeight)
-      .fill(fillColor);
+    // Draw isometric diamond for the regiment
+    this.drawIsoDiamond(graphics, isoX, isoY, tileWidth, tileHeight);
+    graphics.fill(fillColor);
     
     // Add a border to selected units for extra visibility
     if (isSelected) {
-      graphics
-        .rect(isoX, isoY, width, unitHeight)
-        .stroke({ width: 2, color: 0xffffff }); // White border
+      this.drawIsoDiamond(graphics, isoX, isoY, tileWidth, tileHeight);
+      graphics.stroke({ width: 2, color: 0xffffff }); // White border
     }
   }
 
@@ -292,14 +365,239 @@ export class PixiRenderer {
   }
 
   /**
+   * Render the map tiles as an isometric grid
+   */
+  private renderMap(map: GameMap): void {
+    // Only render once if not already rendered
+    if (this.mapGraphics) {
+      return;
+    }
+
+    this.mapGraphics = new Graphics();
+    this.mapLayer.addChild(this.mapGraphics);
+
+    const mapWidth = map.getWidth();
+    const mapHeight = map.getHeight();
+    const tileWidth = this.isoConfig.tileWidth;
+    const tileHeight = this.isoConfig.tileHeight;
+
+    // Calculate and apply centering offset
+    const { offsetX, offsetY } = this.calculateMapCenterOffset(mapWidth, mapHeight);
+    this.initialOffsetX = offsetX;
+    this.initialOffsetY = offsetY;
+    this.updateLayerPositions();
+
+    // Render each tile
+    for (let y = 0; y < mapHeight; y++) {
+      for (let x = 0; x < mapWidth; x++) {
+        const height = map.getTileHeight(x, y);
+        const { isoX, isoY } = gridToIso(x, y, height, this.isoConfig);
+
+        // Draw isometric diamond tile with grass color
+        this.drawIsoDiamond(this.mapGraphics, isoX, isoY, tileWidth, tileHeight);
+        this.mapGraphics.fill(PixiRenderer.GRASS_COLOR);
+
+        // Draw tile border
+        this.drawIsoDiamond(this.mapGraphics, isoX, isoY, tileWidth, tileHeight);
+        this.mapGraphics.stroke({ width: 1, color: PixiRenderer.TILE_BORDER_COLOR });
+      }
+    }
+  }
+
+  /**
+   * Set up hover listener for tile hover effect
+   */
+  private setupHoverListener(): void {
+    this.app.canvas.addEventListener('mousemove', this.handleMouseMove);
+  }
+
+  /**
+   * Set up keyboard listeners for camera panning
+   */
+  private setupKeyboardListeners(): void {
+    document.addEventListener('keydown', this.handleKeyDown);
+    document.addEventListener('keyup', this.handleKeyUp);
+  }
+
+  /**
+   * Handle keydown events for camera panning
+   */
+  private handleKeyDown = (event: KeyboardEvent): void => {
+    const key = event.key.toLowerCase();
+    
+    // Arrow keys or WASD for panning
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
+      this.keysPressed.add(key);
+      event.preventDefault(); // Prevent page scrolling
+    }
+  };
+
+  /**
+   * Handle keyup events for camera panning
+   */
+  private handleKeyUp = (event: KeyboardEvent): void => {
+    const key = event.key.toLowerCase();
+    this.keysPressed.delete(key);
+  };
+
+  /**
+   * Update camera position based on currently pressed keys
+   * This should be called every frame
+   */
+  updateCamera(): void {
+    let deltaX = 0;
+    let deltaY = 0;
+
+    // Check which keys are pressed and accumulate movement
+    if (this.keysPressed.has('arrowleft') || this.keysPressed.has('a')) {
+      deltaX += PixiRenderer.SCROLL_SPEED;
+    }
+    if (this.keysPressed.has('arrowright') || this.keysPressed.has('d')) {
+      deltaX -= PixiRenderer.SCROLL_SPEED;
+    }
+    if (this.keysPressed.has('arrowup') || this.keysPressed.has('w')) {
+      deltaY += PixiRenderer.SCROLL_SPEED;
+    }
+    if (this.keysPressed.has('arrowdown') || this.keysPressed.has('s')) {
+      deltaY -= PixiRenderer.SCROLL_SPEED;
+    }
+
+    // Update camera offset
+    if (deltaX !== 0 || deltaY !== 0) {
+      this.cameraOffsetX += deltaX;
+      this.cameraOffsetY += deltaY;
+      this.updateLayerPositions();
+    }
+  }
+
+  /**
+   * Update all layer positions based on camera offset
+   */
+  private updateLayerPositions(): void {
+    const totalOffsetX = this.initialOffsetX + this.cameraOffsetX;
+    const totalOffsetY = this.initialOffsetY + this.cameraOffsetY;
+    
+    this.mapLayer.x = totalOffsetX;
+    this.mapLayer.y = totalOffsetY;
+    this.gameLayer.x = totalOffsetX;
+    this.gameLayer.y = totalOffsetY;
+    this.orderVisualizationLayer.x = totalOffsetX;
+    this.orderVisualizationLayer.y = totalOffsetY;
+    this.hoverLayer.x = totalOffsetX;
+    this.hoverLayer.y = totalOffsetY;
+  }
+
+  /**
+   * Handle mouse move for tile hover effect
+   */
+  private handleMouseMove = (event: MouseEvent): void => {
+    const rect = this.app.canvas.getBoundingClientRect();
+    const canvasX = event.clientX - rect.left;
+    const canvasY = event.clientY - rect.top;
+
+    // Convert screen coordinates to grid coordinates (accounts for centering offset)
+    const { gridX, gridY } = this.screenToGrid(canvasX, canvasY);
+    
+    // Use Math.round() for isometric tiles to get the nearest tile center
+    // This provides better accuracy for isometric projection
+    const tileX = Math.round(gridX);
+    const tileY = Math.round(gridY);
+
+    // Update hovered tile only if it changed
+    if (!this.hoveredTile || this.hoveredTile.x !== tileX || this.hoveredTile.y !== tileY) {
+      this.hoveredTile = { x: tileX, y: tileY };
+    }
+  };
+
+  /**
+   * Helper method to draw an isometric diamond shape
+   */
+  private drawIsoDiamond(graphics: Graphics, isoX: number, isoY: number, tileWidth: number, tileHeight: number): void {
+    graphics
+      .moveTo(isoX + tileWidth / 2, isoY)
+      .lineTo(isoX + tileWidth, isoY + tileHeight / 2)
+      .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
+      .lineTo(isoX, isoY + tileHeight / 2)
+      .lineTo(isoX + tileWidth / 2, isoY);
+  }
+
+  /**
+   * Convert canvas screen coordinates to grid coordinates
+   * This accounts for the map centering offset and tile center offset
+   * 
+   * @param canvasX - X coordinate relative to canvas
+   * @param canvasY - Y coordinate relative to canvas
+   * @returns Grid coordinates as { gridX, gridY }
+   */
+  screenToGrid(canvasX: number, canvasY: number): { gridX: number; gridY: number } {
+    const { tileWidth, tileHeight } = this.isoConfig;
+    
+    // Adjust for the layer offset (centering)
+    let adjustedX = canvasX - this.mapLayer.x;
+    let adjustedY = canvasY - this.mapLayer.y;
+    
+    // Adjust for the tile center offset
+    // The diamond is drawn with its top point at (isoX + tileWidth/2, isoY)
+    // and its center at (isoX + tileWidth/2, isoY + tileHeight/2)
+    // We need to offset to the tile's origin for accurate conversion
+    adjustedX -= tileWidth / 2;
+    adjustedY -= tileHeight / 2;
+
+    // Convert to grid coordinates
+    return isoToGrid(adjustedX, adjustedY, this.isoConfig);
+  }
+
+  /**
+   * Render the hover effect for the currently hovered tile
+   */
+  private renderHoverEffect(map: GameMap): void {
+    // Clear previous hover graphics
+    this.hoverLayer.removeChildren();
+
+    if (!this.hoveredTile) {
+      return;
+    }
+
+    const { x, y } = this.hoveredTile;
+    
+    // Only render hover if within map bounds
+    if (!map.isValidPosition(x, y)) {
+      return;
+    }
+
+    const tileWidth = this.isoConfig.tileWidth;
+    const tileHeight = this.isoConfig.tileHeight;
+    const height = map.getTileHeight(x, y);
+    const { isoX, isoY } = gridToIso(x, y, height, this.isoConfig);
+
+    const hoverGraphics = new Graphics();
+    this.hoverLayer.addChild(hoverGraphics);
+
+    // Draw hover highlight as a semi-transparent white overlay
+    this.drawIsoDiamond(hoverGraphics, isoX, isoY, tileWidth, tileHeight);
+    hoverGraphics.fill({ color: PixiRenderer.TILE_HOVER_COLOR, alpha: 0.2 });
+
+    // Draw thicker border for hover
+    this.drawIsoDiamond(hoverGraphics, isoX, isoY, tileWidth, tileHeight);
+    hoverGraphics.stroke({ width: 2, color: PixiRenderer.TILE_HOVER_COLOR, alpha: 0.6 });
+  }
+
+  /**
    * Clean up resources
    */
   destroy(): void {
     this.clear();
     this.clearOrderVisualizations();
+    this.app.canvas.removeEventListener('mousemove', this.handleMouseMove);
+    document.removeEventListener('keydown', this.handleKeyDown);
+    document.removeEventListener('keyup', this.handleKeyUp);
+    this.app.stage.removeChild(this.mapLayer);
     this.app.stage.removeChild(this.gameLayer);
     this.app.stage.removeChild(this.orderVisualizationLayer);
+    this.app.stage.removeChild(this.hoverLayer);
+    this.mapLayer.destroy();
     this.gameLayer.destroy();
     this.orderVisualizationLayer.destroy();
+    this.hoverLayer.destroy();
   }
 }

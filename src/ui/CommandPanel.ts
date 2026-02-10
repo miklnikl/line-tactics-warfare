@@ -2,7 +2,7 @@ import type { GameState } from '../game/GameState.ts';
 import type { Regiment } from '../game/Regiment.ts';
 import type { MoveOrder, HoldOrder } from '../game/Order.ts';
 import type { Application } from 'pixi.js';
-import { isoToGrid, DEFAULT_ISO_CONFIG } from '../utils/iso.ts';
+import type { PixiRenderer } from '../renderer/PixiRenderer.ts';
 
 /**
  * CommandPanel provides UI controls to issue orders to the selected regiment.
@@ -18,6 +18,7 @@ export class CommandPanel {
   private gameState: GameState;
   private regimentMap: Map<string, Regiment>;
   private app: Application;
+  private renderer: PixiRenderer;
   private moveMode: boolean = false;
   private moveButton: HTMLButtonElement;
   private holdButton: HTMLButtonElement;
@@ -27,10 +28,11 @@ export class CommandPanel {
   private canvasContextMenuHandler: (event: MouseEvent) => void;
   private keydownHandler: (event: KeyboardEvent) => void;
 
-  constructor(gameState: GameState, regiments: Regiment[], app: Application) {
+  constructor(gameState: GameState, regiments: Regiment[], app: Application, renderer: PixiRenderer) {
     this.gameState = gameState;
     this.regimentMap = new Map(regiments.map(r => [r.getId(), r]));
     this.app = app;
+    this.renderer = renderer;
     
     // Get the panel element from the DOM
     const panel = document.getElementById('command-panel');
@@ -203,14 +205,32 @@ export class CommandPanel {
       const canvasX = event.clientX - rect.left;
       const canvasY = event.clientY - rect.top;
       
-      // Convert canvas to grid coordinates using the same method as InputHandler
-      const { gridX, gridY } = isoToGrid(canvasX, canvasY, DEFAULT_ISO_CONFIG);
+      // Convert canvas to grid coordinates using the renderer's method
+      // This accounts for the map centering offset
+      const { gridX, gridY } = this.renderer.screenToGrid(canvasX, canvasY);
       
-      // Assign MOVE order with target position (rounded to nearest integer)
+      // Round to nearest integer for tile coordinates
+      const targetX = Math.round(gridX);
+      const targetY = Math.round(gridY);
+      
+      // Validate that the target is within map bounds
+      const map = this.gameState.getMap();
+      if (!map.isValidPosition(targetX, targetY)) {
+        console.log(`Invalid target position (${targetX}, ${targetY}) - outside map bounds`);
+        this.statusText.textContent = 'Invalid target - click within the map';
+        this.statusText.style.color = '#ff6b6b';
+        setTimeout(() => {
+          this.statusText.textContent = 'Click on the map to set move target';
+          this.statusText.style.color = '';
+        }, 1500);
+        return;
+      }
+      
+      // Assign MOVE order with validated target position
       const moveOrder: MoveOrder = {
         type: 'MOVE',
-        targetX: Math.round(gridX),
-        targetY: Math.round(gridY)
+        targetX,
+        targetY
       };
       regiment.setOrder(moveOrder);
       
