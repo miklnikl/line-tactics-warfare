@@ -46,6 +46,10 @@ export class PixiRenderer {
   private static readonly GRASS_COLOR = 0x85EC0D; // #85EC0D
   private static readonly TILE_BORDER_COLOR = 0xB9FF6C; // #B9FF6C
   private static readonly TILE_HOVER_COLOR = 0xFFFFFF; // White highlight
+  private static readonly WALL_LEFT_COLOR = 0x5D4E37; // Dark brown/mud for left wall
+  private static readonly WALL_RIGHT_COLOR = 0x8B7355; // Lighter brown/soil for right wall
+  private static readonly WALL_FRONT_LEFT_COLOR = 0x6B5842; // Medium-dark brown for front-left wall
+  private static readonly WALL_FRONT_RIGHT_COLOR = 0x7A6550; // Medium-light brown for front-right wall
 
   constructor(app: Application, isoConfig: IsoConfig = DEFAULT_ISO_CONFIG) {
     this.app = app;
@@ -393,6 +397,17 @@ export class PixiRenderer {
         const height = map.getTileHeight(x, y);
         const { isoX, isoY } = gridToIso(x, y, height, this.isoConfig);
 
+        // Draw walls for elevated tiles
+        if (height > 0) {
+          // Check neighboring tiles to determine which walls to draw
+          const leftNeighborHeight = map.isValidPosition(x - 1, y) ? map.getTileHeight(x - 1, y) : 0;
+          const rightNeighborHeight = map.isValidPosition(x + 1, y) ? map.getTileHeight(x + 1, y) : 0;
+          const frontLeftNeighborHeight = map.isValidPosition(x - 1, y + 1) ? map.getTileHeight(x - 1, y + 1) : 0;
+          const frontRightNeighborHeight = map.isValidPosition(x + 1, y + 1) ? map.getTileHeight(x + 1, y + 1) : 0;
+          
+          this.drawTileWalls(this.mapGraphics, isoX, isoY, tileWidth, tileHeight, height, leftNeighborHeight, rightNeighborHeight, frontLeftNeighborHeight, frontRightNeighborHeight);
+        }
+
         // Draw isometric diamond tile with grass color
         this.drawIsoDiamond(this.mapGraphics, isoX, isoY, tileWidth, tileHeight);
         this.mapGraphics.fill(PixiRenderer.GRASS_COLOR);
@@ -519,6 +534,74 @@ export class PixiRenderer {
       .lineTo(isoX + tileWidth / 2, isoY + tileHeight)
       .lineTo(isoX, isoY + tileHeight / 2)
       .lineTo(isoX + tileWidth / 2, isoY);
+  }
+
+  /**
+   * Draw walls for elevated tiles
+   * Draws the left, right, and front faces of an elevated isometric tile
+   * Only draws walls that are visible (not blocked by equal or higher neighbors)
+   */
+  private drawTileWalls(
+    graphics: Graphics,
+    isoX: number,
+    isoY: number,
+    tileWidth: number,
+    tileHeight: number,
+    height: number,
+    leftNeighborHeight: number,
+    rightNeighborHeight: number,
+    frontLeftNeighborHeight: number,
+    frontRightNeighborHeight: number
+  ): void {
+    // Draw left wall only if this tile is higher than its left neighbor
+    if (height > leftNeighborHeight) {
+      const wallHeight = height - leftNeighborHeight;
+      graphics
+        .moveTo(isoX, isoY + tileHeight / 2 + wallHeight) // Bottom-left at neighbor level
+        .lineTo(isoX, isoY + tileHeight / 2) // Top-left at this tile's level
+        .lineTo(isoX + tileWidth / 2, isoY) // Top point of diamond
+        .lineTo(isoX + tileWidth / 2, isoY + wallHeight) // Top point at neighbor level
+        .lineTo(isoX, isoY + tileHeight / 2 + wallHeight)
+        .fill(PixiRenderer.WALL_LEFT_COLOR);
+    }
+
+    // Draw right wall only if this tile is higher than its right neighbor
+    if (height > rightNeighborHeight) {
+      const wallHeight = height - rightNeighborHeight;
+      graphics
+        .moveTo(isoX + tileWidth, isoY + tileHeight / 2 + wallHeight) // Bottom-right at neighbor level
+        .lineTo(isoX + tileWidth, isoY + tileHeight / 2) // Top-right at this tile's level
+        .lineTo(isoX + tileWidth / 2, isoY) // Top point of diamond
+        .lineTo(isoX + tileWidth / 2, isoY + wallHeight) // Top point at neighbor level
+        .lineTo(isoX + tileWidth, isoY + tileHeight / 2 + wallHeight)
+        .fill(PixiRenderer.WALL_RIGHT_COLOR);
+    }
+
+    // Draw front-left wall only if this tile is higher than its front-left diagonal neighbor
+    // Wall from left point to bottom point
+    if (height > frontLeftNeighborHeight) {
+      const wallHeight = height - frontLeftNeighborHeight;
+      graphics
+        .moveTo(isoX, isoY + tileHeight / 2 + wallHeight) // Left point at neighbor level
+        .lineTo(isoX, isoY + tileHeight / 2) // Left point at this tile's level
+        .lineTo(isoX + tileWidth / 2, isoY + tileHeight) // Bottom point at this tile's level
+        .lineTo(isoX + tileWidth / 2, isoY + tileHeight + wallHeight) // Bottom point at neighbor level
+        .lineTo(isoX, isoY + tileHeight / 2 + wallHeight)
+        .fill(PixiRenderer.WALL_FRONT_LEFT_COLOR);
+    }
+
+    // Draw front-right wall only if this tile is higher than its front-right diagonal neighbor
+    // Wall from bottom point to right point
+    if (height > frontRightNeighborHeight) {
+      const wallHeight = height - frontRightNeighborHeight;
+      graphics
+        .moveTo(isoX + tileWidth / 2, isoY + tileHeight + wallHeight) // Bottom point at neighbor level
+        .lineTo(isoX + tileWidth / 2, isoY + tileHeight) // Bottom point at this tile's level
+        .lineTo(isoX + tileWidth, isoY + tileHeight / 2) // Right point at this tile's level
+        .lineTo(isoX + tileWidth, isoY + tileHeight / 2 + wallHeight) // Right point at neighbor level
+        .lineTo(isoX + tileWidth / 2, isoY + tileHeight + wallHeight)
+        .fill(PixiRenderer.WALL_FRONT_RIGHT_COLOR);
+    }
   }
 
   /**
