@@ -1,16 +1,22 @@
 import React from 'react'
 import './style.css'
+import { GameField } from './components/GameField'
+import type { Application } from 'pixi.js'
+
+interface AppProps {
+  onAppReady?: (app: Application) => void;
+}
 
 /**
  * Root React component for the Line Tactics Warfare application.
  * Provides layout structure for the game canvas and HUD elements.
  * Game logic remains external to React.
  */
-export const App: React.FC = () => {
+export const App: React.FC<AppProps> = ({ onAppReady }) => {
   return (
     <div className="app-container">
-      {/* Canvas container - will be populated by PixiJS */}
-      <div id="game-canvas" />
+      {/* GameField component - manages PixiJS canvas lifecycle */}
+      <GameField onAppReady={onAppReady} />
       
       {/* HUD container for UI overlays */}
       <div className="hud-container">
