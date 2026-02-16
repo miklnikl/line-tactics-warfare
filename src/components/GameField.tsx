@@ -11,7 +11,7 @@ interface GameFieldProps {
  * Responsibilities:
  * - Create PIXI.Application on mount
  * - Attach canvas to a div ref
- * - Destroy Pixi app on unmount
+ * - Destroy Pixi app on unmount (prevents memory leaks)
  * - Receive GameState as a prop (for future use)
  * 
  * Design rules:
