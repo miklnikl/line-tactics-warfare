@@ -29,24 +29,27 @@ export const GameField: React.FC<GameFieldProps> = ({ onAppReady }) => {
 
     // Initialize the application
     const initApp = async () => {
-      await app.init({
-        width: 1200,
-        height: 600,
-        backgroundColor: 0x1099bb,
-        resizeTo: containerRef.current || undefined
-      });
+      try {
+        await app.init({
+          width: 1200,
+          height: 600,
+          backgroundColor: 0x1099bb
+        });
 
-      // Append canvas to container
-      if (containerRef.current) {
-        containerRef.current.appendChild(app.canvas);
-      }
+        // Append canvas to container
+        if (containerRef.current) {
+          containerRef.current.appendChild(app.canvas);
+        }
 
-      // Store reference for cleanup
-      appRef.current = app;
+        // Store reference for cleanup
+        appRef.current = app;
 
-      // Notify parent that app is ready
-      if (onAppReady) {
-        onAppReady(app);
+        // Notify parent that app is ready
+        if (onAppReady) {
+          onAppReady(app);
+        }
+      } catch (error) {
+        console.error('Failed to initialize PixiJS Application:', error);
       }
     };
 
@@ -65,20 +68,27 @@ export const GameField: React.FC<GameFieldProps> = ({ onAppReady }) => {
     };
   }, []); // Empty dependency array - only run on mount/unmount
 
-  // Handle window resize
+  // Handle window resize with debouncing
   useEffect(() => {
+    let resizeTimeout: number;
+    
     const handleResize = () => {
-      if (appRef.current && containerRef.current) {
-        appRef.current.renderer.resize(
-          containerRef.current.clientWidth,
-          containerRef.current.clientHeight
-        );
-      }
+      // Debounce resize events to avoid performance issues
+      clearTimeout(resizeTimeout);
+      resizeTimeout = window.setTimeout(() => {
+        if (appRef.current && containerRef.current) {
+          appRef.current.renderer.resize(
+            containerRef.current.clientWidth,
+            containerRef.current.clientHeight
+          );
+        }
+      }, 100);
     };
 
     window.addEventListener('resize', handleResize);
 
     return () => {
+      clearTimeout(resizeTimeout);
       window.removeEventListener('resize', handleResize);
     };
   }, []);
