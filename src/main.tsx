@@ -1,4 +1,6 @@
 import { Application } from 'pixi.js'
+import { createRoot } from 'react-dom/client'
+import { App } from './App.tsx'
 import { GameState } from './game/GameState.ts'
 import { GameMap } from './game/GameMap.ts'
 import { TurnSimulator } from './game/TurnSimulator.ts'
@@ -10,6 +12,11 @@ import { InputHandler } from './input/InputHandler.ts'
 import { RegimentInfoPanel } from './ui/RegimentInfoPanel.ts'
 import { CommandPanel } from './ui/CommandPanel.ts'
 
+// Render React app first
+const rootElement = document.getElementById('app')!
+const root = createRoot(rootElement)
+root.render(<App />)
+
 // Create a PixiJS Application
 const app = new Application()
 
@@ -20,8 +27,8 @@ await app.init({
   backgroundColor: 0x1099bb
 })
 
-// Append the canvas to the document
-document.querySelector<HTMLDivElement>('#app')!.appendChild(app.canvas)
+// Append the canvas to the game-canvas container (rendered by React)
+document.querySelector<HTMLDivElement>('#game-canvas')!.appendChild(app.canvas)
 
 // Create a game map with varied terrain heights
 const gameMap = new GameMap(20, 20)
