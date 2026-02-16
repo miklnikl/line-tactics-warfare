@@ -1,6 +1,6 @@
 import React from 'react'
 import './style.css'
-import { GameField } from './components/GameField'
+import { GameLayout } from './components/GameLayout'
 import type { Application } from 'pixi.js'
 
 interface AppProps {
@@ -14,19 +14,14 @@ interface AppProps {
  */
 export const App: React.FC<AppProps> = ({ onAppReady }) => {
   return (
-    <div className="app-container">
-      {/* GameField component - manages PixiJS canvas lifecycle */}
-      <GameField onAppReady={onAppReady} />
-      
-      {/* HUD container for UI overlays */}
-      <div className="hud-container">
-        <div id="phase-indicator" className="phase-indicator">
-          Phase: PLANNING
-        </div>
-        <div id="regiment-info-panel" className="info-panel" />
-        <div id="command-panel" className="command-panel" />
-        <button id="end-turn-button">End Turn</button>
+    <GameLayout onAppReady={onAppReady}>
+      {/* HUD Elements - rendered as overlay above the game canvas */}
+      <div id="phase-indicator" className="phase-indicator">
+        Phase: PLANNING
       </div>
-    </div>
+      <div id="regiment-info-panel" className="info-panel" />
+      <div id="command-panel" className="command-panel" />
+      <button id="end-turn-button">End Turn</button>
+    </GameLayout>
   )
 }

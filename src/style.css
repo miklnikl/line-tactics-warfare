@@ -39,26 +39,29 @@ h1 {
   height: 100vh;
   margin: 0;
   padding: 0;
+  overflow: hidden;
 }
 
-/* App container for game layout */
-.app-container {
+/* GameLayout: Fullscreen container for game canvas and HUD */
+.game-layout {
   position: relative;
   width: 100%;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  height: 100%;
+  overflow: hidden;
 }
 
-/* Canvas container */
-#game-canvas {
-  position: relative;
+/* Canvas Layer: Bottom layer (z-index: 1) */
+.game-layout__canvas-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1;
 }
 
-/* HUD overlay container */
-.hud-container {
+/* HUD Layer: Overlay layer (z-index: 10) */
+.game-layout__hud-layer {
   position: absolute;
   top: 0;
   left: 0;
@@ -68,8 +71,15 @@ h1 {
   z-index: 10;
 }
 
-.hud-container > * {
+/* Allow interaction with HUD elements */
+.game-layout__hud-layer > * {
   pointer-events: auto;
+}
+
+/* Canvas container fills its parent */
+#game-canvas {
+  width: 100%;
+  height: 100%;
 }
 
 .logo {

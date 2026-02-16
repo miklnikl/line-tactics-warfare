@@ -22,6 +22,12 @@ interface GameFieldProps {
 export const GameField: React.FC<GameFieldProps> = ({ onAppReady }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
+  const onAppReadyRef = useRef(onAppReady);
+
+  // Keep the callback ref updated
+  useEffect(() => {
+    onAppReadyRef.current = onAppReady;
+  }, [onAppReady]);
 
   useEffect(() => {
     // Create PixiJS Application
@@ -30,10 +36,17 @@ export const GameField: React.FC<GameFieldProps> = ({ onAppReady }) => {
     // Initialize the application
     const initApp = async () => {
       try {
+        // Get container dimensions to initialize canvas with proper size
+        const width = containerRef.current?.clientWidth || window.innerWidth;
+        const height = containerRef.current?.clientHeight || window.innerHeight;
+
         await app.init({
-          width: 1200,
-          height: 600,
-          backgroundColor: 0x1099bb
+          width,
+          height,
+          backgroundColor: 0x1099bb,
+          // resizeTo: Use container if available, otherwise fall back to window
+          // This ensures responsive behavior works even if container isn't mounted yet
+          resizeTo: containerRef.current || window
         });
 
         // Append canvas to container
@@ -44,9 +57,9 @@ export const GameField: React.FC<GameFieldProps> = ({ onAppReady }) => {
         // Store reference for cleanup
         appRef.current = app;
 
-        // Notify parent that app is ready
-        if (onAppReady) {
-          onAppReady(app);
+        // Notify parent that app is ready (using ref to get latest callback)
+        if (onAppReadyRef.current) {
+          onAppReadyRef.current(app);
         }
       } catch (error) {
         console.error('Failed to initialize PixiJS Application:', error);
@@ -68,40 +81,15 @@ export const GameField: React.FC<GameFieldProps> = ({ onAppReady }) => {
     };
   }, []); // Empty dependency array - only run on mount/unmount
 
-  // Handle window resize with debouncing
-  useEffect(() => {
-    let resizeTimeout: number;
-    
-    const handleResize = () => {
-      // Debounce resize events to avoid performance issues
-      clearTimeout(resizeTimeout);
-      resizeTimeout = window.setTimeout(() => {
-        if (appRef.current && containerRef.current) {
-          appRef.current.renderer.resize(
-            containerRef.current.clientWidth,
-            containerRef.current.clientHeight
-          );
-        }
-      }, 100);
-    };
 
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      clearTimeout(resizeTimeout);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
 
   return (
     <div 
       ref={containerRef} 
       id="game-canvas"
       style={{ 
-        position: 'relative', 
         width: '100%', 
-        height: '100%',
-        zIndex: 1
+        height: '100%'
       }}
     />
   );
