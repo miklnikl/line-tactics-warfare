@@ -70,9 +70,10 @@ const gameLoop = new GameLoop(gameState, turnSimulator)
 // Initialize the renderer
 const renderer = new PixiRenderer(app)
 
-// Initialize the input handler (instantiated for its event listener setup)
+// Initialize the input handler for its side effects (sets up event listeners on canvas)
+// The instance is not used directly, but its constructor attaches necessary event handlers
 const inputHandler = new InputHandler(app, gameState, regiments, renderer)
-void inputHandler // Suppress unused variable warning
+void inputHandler // Keep reference to prevent garbage collection
 
 // Initialize the regiment info panel
 const regimentInfoPanel = new RegimentInfoPanel(gameState, regiments)
@@ -181,6 +182,8 @@ document.addEventListener('keydown', (event) => {
 })
 
 // Add "End Turn" button event listener
+// Note: Direct DOM access is used here because this game logic runs outside React's control.
+// The button is rendered by React but its behavior is managed by the game loop.
 const endTurnButton = document.getElementById('end-turn-button') as HTMLButtonElement | null
 if (endTurnButton) {
   endTurnButton.addEventListener('click', () => {
@@ -204,6 +207,9 @@ if (endTurnButton) {
 }
 
 // Get phase indicator element
+// Note: Direct DOM query is required in this hybrid architecture where game logic
+// runs outside React. The UI structure is managed by React but updated imperatively
+// by the game loop for performance and to maintain separation of concerns.
 const phaseIndicator = document.getElementById('phase-indicator')
 
 /**
