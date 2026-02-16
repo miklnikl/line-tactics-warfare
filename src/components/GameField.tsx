@@ -22,6 +22,12 @@ interface GameFieldProps {
 export const GameField: React.FC<GameFieldProps> = ({ onAppReady }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
+  const onAppReadyRef = useRef(onAppReady);
+
+  // Keep the callback ref updated
+  useEffect(() => {
+    onAppReadyRef.current = onAppReady;
+  }, [onAppReady]);
 
   useEffect(() => {
     // Create PixiJS Application
@@ -38,7 +44,7 @@ export const GameField: React.FC<GameFieldProps> = ({ onAppReady }) => {
           width,
           height,
           backgroundColor: 0x1099bb,
-          resizeTo: containerRef.current || undefined
+          resizeTo: containerRef.current || window
         });
 
         // Append canvas to container
@@ -49,9 +55,9 @@ export const GameField: React.FC<GameFieldProps> = ({ onAppReady }) => {
         // Store reference for cleanup
         appRef.current = app;
 
-        // Notify parent that app is ready
-        if (onAppReady) {
-          onAppReady(app);
+        // Notify parent that app is ready (using ref to get latest callback)
+        if (onAppReadyRef.current) {
+          onAppReadyRef.current(app);
         }
       } catch (error) {
         console.error('Failed to initialize PixiJS Application:', error);
