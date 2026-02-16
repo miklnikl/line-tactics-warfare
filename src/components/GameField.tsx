@@ -44,6 +44,8 @@ export const GameField: React.FC<GameFieldProps> = ({ onAppReady }) => {
           width,
           height,
           backgroundColor: 0x1099bb,
+          // resizeTo: Use container if available, otherwise fall back to window
+          // This ensures responsive behavior works even if container isn't mounted yet
           resizeTo: containerRef.current || window
         });
 
