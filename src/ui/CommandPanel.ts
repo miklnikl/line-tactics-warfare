@@ -24,9 +24,9 @@ export class CommandPanel {
   private holdButton: HTMLButtonElement;
   private cancelButton: HTMLButtonElement;
   private statusText: HTMLElement;
-  private canvasClickHandler: (event: MouseEvent) => void;
-  private canvasContextMenuHandler: (event: MouseEvent) => void;
-  private keydownHandler: (event: KeyboardEvent) => void;
+  private canvasClickHandler!: (event: MouseEvent) => void;
+  private canvasContextMenuHandler!: (event: MouseEvent) => void;
+  private keydownHandler!: (event: KeyboardEvent) => void;
 
   constructor(gameState: GameState, regiments: Regiment[], app: Application, renderer: PixiRenderer) {
     this.gameState = gameState;
