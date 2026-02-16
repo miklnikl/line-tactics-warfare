@@ -1,8 +1,7 @@
 import type { Application } from 'pixi.js'
 import { createRoot } from 'react-dom/client'
 import { App } from './App.tsx'
-import { GameState } from './game/GameState.ts'
-import { GameMap } from './game/GameMap.ts'
+import { gameState } from './game/GameService.ts'
 import { TurnSimulator } from './game/TurnSimulator.ts'
 import { GameLoop } from './game/GameLoop.ts'
 import { PixiRenderer } from './renderer/PixiRenderer.ts'
@@ -12,26 +11,8 @@ import { InputHandler } from './input/InputHandler.ts'
 import { RegimentInfoPanel } from './ui/RegimentInfoPanel.ts'
 import { CommandPanel } from './ui/CommandPanel.ts'
 
-// Create a game map with varied terrain heights
-const gameMap = new GameMap(20, 20)
-// Set some elevated terrain for visual demonstration
-gameMap.setTileHeight(1, 1, 20)
-gameMap.setTileHeight(5, 5, 15)
-gameMap.setTileHeight(19, 19, 25)
-
-// Create a small elevated plateau to showcase wall rendering
-gameMap.setTileHeight(10, 10, 30)
-gameMap.setTileHeight(11, 10, 30)
-gameMap.setTileHeight(10, 11, 30)
-gameMap.setTileHeight(11, 11, 30)
-
-// Create a stepped elevation
-gameMap.setTileHeight(15, 5, 10)
-gameMap.setTileHeight(15, 6, 20)
-gameMap.setTileHeight(15, 7, 30)
-
-// Initialize game logic (independent of PixiJS)
-const gameState = new GameState(gameMap)
+// Use the shared GameState instance from GameService
+// The map configuration is now centralized in GameService
 
 // Create Regiment instances for WEGO turn system
 const regiments = [
