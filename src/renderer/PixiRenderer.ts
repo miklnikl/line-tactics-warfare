@@ -50,6 +50,11 @@ export class PixiRenderer {
   private static readonly ARROW_HEAD_SIZE = 10;
   private static readonly HOLD_ORDER_CIRCLE_RADIUS = 25;
 
+  // Visual constants for selection
+  private static readonly SELECTION_CIRCLE_RADIUS = 20;
+  private static readonly SELECTION_STROKE_WIDTH = 2;
+  private static readonly SELECTION_COLOR = 0xffff00; // Yellow
+
   // Visual constants for tiles
   private static readonly GRASS_COLOR = 0x85EC0D; // #85EC0D
   private static readonly TILE_BORDER_COLOR = 0xB9FF6C; // #B9FF6C
@@ -172,6 +177,10 @@ export class PixiRenderer {
     const currentUnitIds = new Set<string>();
 
     // Create a map of unit ID to regiment for quick lookup
+    // Note: Rebuilt each frame rather than cached. This is acceptable because:
+    // 1. Regiment count is typically small (3-30)
+    // 2. Map construction is O(n) and very fast
+    // 3. Avoids complex cache invalidation when regiments change
     const regimentMap = new Map<string, Regiment>();
     if (regiments) {
       for (const regiment of regiments) {
@@ -293,8 +302,8 @@ export class PixiRenderer {
       
       // Draw a selection circle around the sprite
       graphics
-        .circle(sprite.x, sprite.y, 20)
-        .stroke({ width: 2, color: 0xffff00 }); // Yellow selection circle
+        .circle(sprite.x, sprite.y, PixiRenderer.SELECTION_CIRCLE_RADIUS)
+        .stroke({ width: PixiRenderer.SELECTION_STROKE_WIDTH, color: PixiRenderer.SELECTION_COLOR });
     } else {
       // Clear graphics if not selected
       const graphics = this.unitGraphics.get(unit.id);
