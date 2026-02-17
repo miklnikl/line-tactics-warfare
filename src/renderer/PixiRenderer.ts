@@ -51,7 +51,6 @@ export class PixiRenderer {
   private static readonly HOLD_ORDER_CIRCLE_RADIUS = 25;
 
   // Visual constants for selection
-  private static readonly SELECTION_CIRCLE_RADIUS = 20;
   private static readonly SELECTION_STROKE_WIDTH = 2;
   private static readonly SELECTION_COLOR = 0xffff00; // Yellow
 
@@ -300,10 +299,11 @@ export class PixiRenderer {
       
       graphics.clear();
       
-      // Draw a selection circle around the sprite
-      graphics
-        .circle(sprite.x, sprite.y, PixiRenderer.SELECTION_CIRCLE_RADIUS)
-        .stroke({ width: PixiRenderer.SELECTION_STROKE_WIDTH, color: PixiRenderer.SELECTION_COLOR });
+      // Draw a selection diamond around the sprite
+      const diamondIsoX = sprite.x - tileWidth / 2;
+      const diamondIsoY = sprite.y - tileHeight / 2;
+      this.drawIsoDiamond(graphics, diamondIsoX, diamondIsoY, tileWidth, tileHeight);
+      graphics.stroke({ width: PixiRenderer.SELECTION_STROKE_WIDTH, color: PixiRenderer.SELECTION_COLOR });
     } else {
       // Clear graphics if not selected
       const graphics = this.unitGraphics.get(unit.id);
@@ -357,13 +357,9 @@ export class PixiRenderer {
     // NORTH and SOUTH default to right facing
     switch (direction) {
       case 'WEST':
-      case 'NORTHWEST':
-      case 'SOUTHWEST':
+      case 'NORTH':
         return this.regimentLeftTexture;
       case 'EAST':
-      case 'NORTHEAST':
-      case 'SOUTHEAST':
-      case 'NORTH':
       case 'SOUTH':
       default:
         return this.regimentRightTexture;
