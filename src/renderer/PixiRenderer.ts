@@ -29,9 +29,11 @@ export class PixiRenderer {
   private mapGraphics: Graphics | null;
   private hoveredTile: { x: number; y: number } | null;
   
-  // Sprite textures for regiment rendering
-  private regimentLeftTexture: Texture | null = null;
-  private regimentRightTexture: Texture | null = null;
+  // Sprite textures for regiment rendering (4 cardinal directions)
+  private regimentNorthTexture: Texture | null = null;
+  private regimentSouthTexture: Texture | null = null;
+  private regimentEastTexture: Texture | null = null;
+  private regimentWestTexture: Texture | null = null;
   private spritesLoaded: boolean = false;
   
   // Camera offset for panning
@@ -98,8 +100,11 @@ export class PixiRenderer {
   private async loadSprites(): Promise<void> {
     try {
       // Use Assets API for PixiJS v8
-      this.regimentLeftTexture = await Assets.load('/assets/regiment-left.png');
-      this.regimentRightTexture = await Assets.load('/assets/regiment-right.png');
+      // Load 4 cardinal direction sprites
+      this.regimentNorthTexture = await Assets.load('/assets/regiment-nord.png');
+      this.regimentSouthTexture = await Assets.load('/assets/regiment-south.png');
+      this.regimentEastTexture = await Assets.load('/assets/regiment-east.png');
+      this.regimentWestTexture = await Assets.load('/assets/regiment-west.png');
       
       // Textures from Assets.load are ready to use immediately after the promise resolves
       this.spritesLoaded = true;
@@ -250,7 +255,7 @@ export class PixiRenderer {
     const { isoX, isoY } = gridToIso(unit.x, unit.y, height, this.isoConfig);
     
     // Use sprite rendering if sprites are loaded, otherwise fallback to diamond
-    if (this.spritesLoaded && regiment && this.regimentLeftTexture && this.regimentRightTexture) {
+    if (this.spritesLoaded && regiment && this.regimentNorthTexture && this.regimentSouthTexture && this.regimentEastTexture && this.regimentWestTexture) {
       this.renderUnitSprite(unit, isoX, isoY, isSelected, regiment);
     } else {
       this.renderUnitDiamond(unit, isoX, isoY, isSelected);
@@ -351,18 +356,21 @@ export class PixiRenderer {
    * Maps 8 directions to left/right facing sprites
    */
   private getTextureForDirection(direction: Direction): Texture | null {
-    // Map directions to left or right facing
-    // WEST, NORTHWEST, SOUTHWEST face left
-    // EAST, NORTHEAST, SOUTHEAST face right
-    // NORTH and SOUTH default to right facing
+    // Map 8 directions to 4 cardinal direction sprites
     switch (direction) {
-      case 'WEST':
       case 'NORTH':
-        return this.regimentLeftTexture;
-      case 'EAST':
+      case 'NORTHWEST':
+        return this.regimentNorthTexture;
       case 'SOUTH':
+      case 'SOUTHEAST':
+        return this.regimentSouthTexture;
+      case 'EAST':
+      case 'NORTHEAST':
+        return this.regimentEastTexture;
+      case 'WEST':
+      case 'SOUTHWEST':
       default:
-        return this.regimentRightTexture;
+        return this.regimentWestTexture;
     }
   }
 

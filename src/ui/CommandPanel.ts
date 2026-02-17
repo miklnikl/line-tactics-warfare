@@ -1,6 +1,7 @@
 import type { GameState } from '../game/GameState.ts';
 import type { Regiment } from '../game/Regiment.ts';
 import type { MoveOrder, HoldOrder } from '../game/Order.ts';
+import { calculateDirectionFromDelta } from '../game/Regiment.ts';
 import type { Application } from 'pixi.js';
 import type { PixiRenderer } from '../renderer/PixiRenderer.ts';
 
@@ -225,6 +226,12 @@ export class CommandPanel {
         }, 1500);
         return;
       }
+      
+      // Calculate and set direction based on movement vector
+      const deltaX = targetX - regiment.getX();
+      const deltaY = targetY - regiment.getY();
+      const newDirection = calculateDirectionFromDelta(deltaX, deltaY);
+      regiment.setDirection(newDirection);
       
       // Assign MOVE order with validated target position
       const moveOrder: MoveOrder = {
