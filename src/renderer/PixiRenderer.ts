@@ -1,9 +1,11 @@
-import { Application, Container, Graphics } from 'pixi.js';
+import { Application, Container, Graphics, Sprite, Assets } from 'pixi.js';
+import type { Texture } from 'pixi.js';
 import type { GameState } from '../game/GameState.ts';
 import type { GameMap } from '../game/GameMap.ts';
 import type { Unit } from '../game/Unit.ts';
 import type { Regiment } from '../game/Regiment.ts';
 import type { MoveOrder } from '../game/Order.ts';
+import type { Direction } from '../game/Regiment.ts';
 import { gridToIso, isoToGrid, type IsoConfig, DEFAULT_ISO_CONFIG } from '../utils/iso.ts';
 
 /**
@@ -13,18 +15,26 @@ import { gridToIso, isoToGrid, type IsoConfig, DEFAULT_ISO_CONFIG } from '../uti
  * - Does NOT mutate game state
  * - Only READS from GameState
  * - Manages PixiJS stage and layers
- * - Renders regiments as simple rectangles
+ * - Renders regiments with directional sprites
  */
 export class PixiRenderer {
   private app: Application;
   private mapLayer: Container;
   private gameLayer: Container;
   private unitGraphics: Map<string, Graphics>;
+  private unitSprites: Map<string, Sprite>;
   private orderVisualizationLayer: Container;
   private hoverLayer: Container;
   private isoConfig: IsoConfig;
   private mapGraphics: Graphics | null;
   private hoveredTile: { x: number; y: number } | null;
+  
+  // Sprite textures for regiment rendering (4 cardinal directions)
+  private regimentNorthTexture: Texture | null = null;
+  private regimentSouthTexture: Texture | null = null;
+  private regimentEastTexture: Texture | null = null;
+  private regimentWestTexture: Texture | null = null;
+  private spritesLoaded: boolean = false;
   
   // Camera offset for panning
   private cameraOffsetX: number = 0;
@@ -40,7 +50,10 @@ export class PixiRenderer {
   private static readonly UNIT_CENTER_OFFSET_X = 32; // Half of tile width (64/2)
   private static readonly UNIT_CENTER_OFFSET_Y = 16; // Half of tile height (32/2)
   private static readonly ARROW_HEAD_SIZE = 10;
-  private static readonly HOLD_ORDER_CIRCLE_RADIUS = 25;
+
+  // Visual constants for selection
+  private static readonly SELECTION_STROKE_WIDTH = 2;
+  private static readonly SELECTION_COLOR = 0xffff00; // Yellow
 
   // Visual constants for tiles
   private static readonly GRASS_COLOR = 0x85EC0D; // #85EC0D
@@ -56,6 +69,7 @@ export class PixiRenderer {
     this.mapLayer = new Container();
     this.gameLayer = new Container();
     this.unitGraphics = new Map();
+    this.unitSprites = new Map();
     this.orderVisualizationLayer = new Container();
     this.hoverLayer = new Container();
     this.isoConfig = isoConfig;
@@ -68,11 +82,36 @@ export class PixiRenderer {
     this.app.stage.addChild(this.orderVisualizationLayer);
     this.app.stage.addChild(this.hoverLayer);
     
+    // Load sprite textures
+    this.loadSprites();
+    
     // Set up mouse move listener for hover effect
     this.setupHoverListener();
     
     // Set up keyboard listeners for camera panning
     this.setupKeyboardListeners();
+  }
+
+  /**
+   * Load sprite textures asynchronously
+   * Sprites are loaded from the public/assets folder
+   */
+  private async loadSprites(): Promise<void> {
+    try {
+      // Use Assets API for PixiJS v8
+      // Load 4 cardinal direction sprites
+      this.regimentNorthTexture = await Assets.load('/assets/regiment-nord.png');
+      this.regimentSouthTexture = await Assets.load('/assets/regiment-south.png');
+      this.regimentEastTexture = await Assets.load('/assets/regiment-east.png');
+      this.regimentWestTexture = await Assets.load('/assets/regiment-west.png');
+      
+      // Textures from Assets.load are ready to use immediately after the promise resolves
+      this.spritesLoaded = true;
+      console.log('Regiment sprites loaded successfully');
+    } catch (error) {
+      console.error('Failed to load regiment sprites:', error);
+      this.spritesLoaded = false;
+    }
   }
 
   /**
@@ -140,6 +179,18 @@ export class PixiRenderer {
     const selectedRegimentId = gameState.getSelectedRegimentId();
     const currentUnitIds = new Set<string>();
 
+    // Create a map of unit ID to regiment for quick lookup
+    // Note: Rebuilt each frame rather than cached. This is acceptable because:
+    // 1. Regiment count is typically small (3-30)
+    // 2. Map construction is O(n) and very fast
+    // 3. Avoids complex cache invalidation when regiments change
+    const regimentMap = new Map<string, Regiment>();
+    if (regiments) {
+      for (const regiment of regiments) {
+        regimentMap.set(regiment.getId(), regiment);
+      }
+    }
+
     // Render the map tiles (only once or when map changes)
     this.renderMap(map);
 
@@ -150,14 +201,21 @@ export class PixiRenderer {
     for (const unit of units) {
       currentUnitIds.add(unit.id);
       const isSelected = unit.id === selectedRegimentId;
-      this.renderUnit(unit, map, isSelected);
+      const regiment = regimentMap.get(unit.id);
+      this.renderUnit(unit, map, isSelected, regiment);
     }
 
-    // Remove graphics for units that no longer exist
+    // Remove graphics and sprites for units that no longer exist
     for (const [unitId, graphics] of this.unitGraphics.entries()) {
       if (!currentUnitIds.has(unitId)) {
         this.gameLayer.removeChild(graphics);
         this.unitGraphics.delete(unitId);
+      }
+    }
+    for (const [unitId, sprite] of this.unitSprites.entries()) {
+      if (!currentUnitIds.has(unitId)) {
+        this.gameLayer.removeChild(sprite);
+        this.unitSprites.delete(unitId);
       }
     }
 
@@ -171,22 +229,10 @@ export class PixiRenderer {
   }
 
   /**
-   * Render a single unit as an isometric diamond shape
+   * Render a single unit with sprite based on regiment direction
    * Only reads from the unit, does not mutate it
    */
-  private renderUnit(unit: Unit, map: GameMap, isSelected: boolean = false): void {
-    let graphics = this.unitGraphics.get(unit.id);
-
-    if (!graphics) {
-      // Create new graphics for this unit
-      graphics = new Graphics();
-      this.gameLayer.addChild(graphics);
-      this.unitGraphics.set(unit.id, graphics);
-    }
-
-    // Clear previous drawing
-    graphics.clear();
-
+  private renderUnit(unit: Unit, map: GameMap, isSelected: boolean = false, regiment?: Regiment): void {
     // Get the terrain height at the unit's position
     // Default to 0 if the unit is outside map bounds
     // Floor the coordinates to get the tile position since units can have fractional positions during simulation
@@ -207,8 +253,86 @@ export class PixiRenderer {
     // The height parameter adjusts the vertical position based on terrain elevation
     const { isoX, isoY } = gridToIso(unit.x, unit.y, height, this.isoConfig);
     
-    // Draw the unit as an isometric diamond shape
-    // Use the same dimensions as tiles for consistency
+    // Use sprite rendering if sprites are loaded, otherwise fallback to diamond
+    if (this.spritesLoaded && regiment && this.regimentNorthTexture && this.regimentSouthTexture && this.regimentEastTexture && this.regimentWestTexture) {
+      this.renderUnitSprite(unit, isoX, isoY, isSelected, regiment);
+    } else {
+      this.renderUnitDiamond(unit, isoX, isoY, isSelected);
+    }
+  }
+
+  /**
+   * Render unit using sprite based on direction
+   */
+  private renderUnitSprite(unit: Unit, isoX: number, isoY: number, isSelected: boolean, regiment: Regiment): void {
+    let sprite = this.unitSprites.get(unit.id);
+
+    if (!sprite) {
+      // Create new sprite for this unit
+      sprite = new Sprite();
+      this.gameLayer.addChild(sprite);
+      this.unitSprites.set(unit.id, sprite);
+    }
+
+    // Determine which texture to use based on direction
+    const direction = regiment.getDirection();
+    const texture = this.getTextureForDirection(direction);
+    
+    if (texture) {
+      sprite.texture = texture;
+    }
+
+    // Position sprite at the center of the tile
+    const tileWidth = this.isoConfig.tileWidth;
+    const tileHeight = this.isoConfig.tileHeight;
+    
+    // Center the sprite on the tile
+    sprite.x = isoX + tileWidth / 2;
+    sprite.y = isoY + tileHeight / 2;
+    sprite.anchor.set(0.5, 0.5);
+
+    // Add selection indicator using graphics overlay
+    if (isSelected) {
+      let graphics = this.unitGraphics.get(unit.id);
+      
+      if (!graphics) {
+        graphics = new Graphics();
+        this.gameLayer.addChild(graphics);
+        this.unitGraphics.set(unit.id, graphics);
+      }
+      
+      graphics.clear();
+      
+      // Draw a selection diamond around the sprite
+      const diamondIsoX = sprite.x - tileWidth / 2;
+      const diamondIsoY = sprite.y - tileHeight / 2;
+      this.drawIsoDiamond(graphics, diamondIsoX, diamondIsoY, tileWidth, tileHeight);
+      graphics.stroke({ width: PixiRenderer.SELECTION_STROKE_WIDTH, color: PixiRenderer.SELECTION_COLOR });
+    } else {
+      // Clear graphics if not selected
+      const graphics = this.unitGraphics.get(unit.id);
+      if (graphics) {
+        graphics.clear();
+      }
+    }
+  }
+
+  /**
+   * Fallback: Render unit as diamond shape (used when sprites not loaded)
+   */
+  private renderUnitDiamond(unit: Unit, isoX: number, isoY: number, isSelected: boolean): void {
+    let graphics = this.unitGraphics.get(unit.id);
+
+    if (!graphics) {
+      // Create new graphics for this unit
+      graphics = new Graphics();
+      this.gameLayer.addChild(graphics);
+      this.unitGraphics.set(unit.id, graphics);
+    }
+
+    // Clear previous drawing
+    graphics.clear();
+    
     const tileWidth = this.isoConfig.tileWidth;
     const tileHeight = this.isoConfig.tileHeight;
 
@@ -227,6 +351,29 @@ export class PixiRenderer {
   }
 
   /**
+   * Get the appropriate texture based on regiment direction
+   * Maps 8 directions to left/right facing sprites
+   */
+  private getTextureForDirection(direction: Direction): Texture | null {
+    // Map 8 directions to 4 cardinal direction sprites
+    switch (direction) {
+      case 'NORTH':
+      case 'NORTHWEST':
+        return this.regimentNorthTexture;
+      case 'SOUTH':
+      case 'SOUTHEAST':
+        return this.regimentSouthTexture;
+      case 'EAST':
+      case 'NORTHEAST':
+        return this.regimentEastTexture;
+      case 'WEST':
+      case 'SOUTHWEST':
+      default:
+        return this.regimentWestTexture;
+    }
+  }
+
+  /**
    * Clear all rendered units
    */
   clear(): void {
@@ -234,6 +381,11 @@ export class PixiRenderer {
       this.gameLayer.removeChild(graphics);
     }
     this.unitGraphics.clear();
+    
+    for (const sprite of this.unitSprites.values()) {
+      this.gameLayer.removeChild(sprite);
+    }
+    this.unitSprites.clear();
   }
 
   /**
@@ -332,7 +484,7 @@ export class PixiRenderer {
 
   /**
    * Render visualization for a HOLD order
-   * Shows a circle indicator around the regiment
+    * Shows a diamond indicator around the regiment
    */
   private renderHoldOrderVisualization(regiment: Regiment, map: GameMap): void {
     const graphics = new Graphics();
@@ -352,13 +504,16 @@ export class PixiRenderer {
     // Convert to isometric coordinates
     const regimentIso = gridToIso(regimentX, regimentY, regimentHeight, this.isoConfig);
 
-    // Draw a circle indicator around the regiment (different color for HOLD)
+    // Draw a grey diamond indicator around the regiment for HOLD
     const centerX = regimentIso.isoX + PixiRenderer.UNIT_CENTER_OFFSET_X;
     const centerY = regimentIso.isoY + PixiRenderer.UNIT_CENTER_OFFSET_Y;
+    const tileWidth = this.isoConfig.tileWidth;
+    const tileHeight = this.isoConfig.tileHeight;
+    const diamondIsoX = centerX - tileWidth / 2;
+    const diamondIsoY = centerY - tileHeight / 2;
 
-    graphics
-      .circle(centerX, centerY, PixiRenderer.HOLD_ORDER_CIRCLE_RADIUS)
-      .stroke({ width: 3, color: 0x0000ff }); // Blue circle for HOLD order
+    this.drawIsoDiamond(graphics, diamondIsoX, diamondIsoY, tileWidth, tileHeight);
+    graphics.stroke({ width: 3, color: 0x808080 }); // Grey diamond for HOLD order
   }
 
   /**

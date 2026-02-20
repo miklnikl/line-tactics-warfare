@@ -1,4 +1,4 @@
-import type { Order, MoveOrder } from './Order.ts';
+import type { Order, MoveOrder, RotateOrder } from './Order.ts';
 import type { GameMap } from './GameMap.ts';
 import { TurnSimulator } from './TurnSimulator.ts';
 
@@ -6,6 +6,47 @@ import { TurnSimulator } from './TurnSimulator.ts';
  * Facing direction for a regiment on the battlefield
  */
 export type Direction = 'NORTH' | 'SOUTH' | 'EAST' | 'WEST' | 'NORTHEAST' | 'NORTHWEST' | 'SOUTHEAST' | 'SOUTHWEST';
+
+/**
+ * Calculate the direction from a delta vector
+ * Used to determine which way a regiment should face when moving
+ * @param dx - Change in X position
+ * @param dy - Change in Y position
+ * @returns The direction corresponding to the movement vector
+ */
+export function calculateDirectionFromDelta(dx: number, dy: number): Direction {
+  // Handle zero movement (stay facing current direction)
+  if (dx === 0 && dy === 0) {
+    return 'NORTH'; // Default direction
+  }
+  
+  // Calculate angle in radians
+  const angle = Math.atan2(dy, dx);
+  
+  // Convert to degrees (0-360)
+  let degrees = angle * (180 / Math.PI);
+  if (degrees < 0) degrees += 360;
+  
+  // Map to 8 directions
+  // EAST = 0°, SOUTH = 90°, WEST = 180°, NORTH = 270°
+  if (degrees >= 337.5 || degrees < 22.5) {
+    return 'EAST';
+  } else if (degrees >= 22.5 && degrees < 67.5) {
+    return 'SOUTHEAST';
+  } else if (degrees >= 67.5 && degrees < 112.5) {
+    return 'SOUTH';
+  } else if (degrees >= 112.5 && degrees < 157.5) {
+    return 'SOUTHWEST';
+  } else if (degrees >= 157.5 && degrees < 202.5) {
+    return 'WEST';
+  } else if (degrees >= 202.5 && degrees < 247.5) {
+    return 'NORTHWEST';
+  } else if (degrees >= 247.5 && degrees < 292.5) {
+    return 'NORTH';
+  } else { // degrees >= 292.5 && degrees < 337.5
+    return 'NORTHEAST';
+  }
+}
 
 /**
  * Regiment class represents a single unit on the battlefield.
@@ -108,6 +149,9 @@ export class Regiment {
     if (this.order !== null) {
       if (this.order.type === 'MOVE') {
         this.executeMoveOrder(this.order as MoveOrder);
+      } else if (this.order.type === 'ROTATE') {
+        // ROTATE order: direction already set when order was created, just clear it
+        this.order = null;
       } else if (this.order.type === 'HOLD') {
         // HOLD order: regiment stays in place, no action needed
       }
@@ -138,6 +182,11 @@ export class Regiment {
         this.order = null;
         return;
       }
+      
+      // Update direction to face the movement direction
+      const deltaX = order.targetX - this.moveStartX;
+      const deltaY = order.targetY - this.moveStartY;
+      this.direction = calculateDirectionFromDelta(deltaX, deltaY);
     }
     
     // Increment tick count

@@ -6,9 +6,9 @@
  * in tsconfig.json, which requires types to be erasable at runtime.
  * Future order types can be added using union types: 'MOVE' | 'ATTACK' | 'DEFEND'
  */
-export type OrderType = 'MOVE' | 'HOLD';
+export type OrderType = 'MOVE' | 'HOLD' | 'ROTATE';
 // Future order types can be added here:
-// export type OrderType = 'MOVE' | 'ATTACK' | 'DEFEND' | 'HOLD';
+// export type OrderType = 'MOVE' | 'ATTACK' | 'DEFEND' | 'HOLD' | 'ROTATE';
 
 /**
  * Base interface for regiment orders
@@ -35,4 +35,14 @@ export interface MoveOrder extends Order {
  */
 export interface HoldOrder extends Order {
   type: 'HOLD';
+}
+
+/**
+ * Rotate order - regiment changes facing direction only
+ * Instructs a regiment to rotate to face a specific cardinal direction
+ * Does not change position, only the direction the regiment faces
+ */
+export interface RotateOrder extends Order {
+  type: 'ROTATE';
+  direction: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST';
 }

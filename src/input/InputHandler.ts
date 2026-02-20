@@ -77,18 +77,15 @@ export class InputHandler {
   /**
    * Find a regiment at the given grid position
    * Returns the regiment if found, null otherwise
+   * Only selects if the click is on the exact same tile as the regiment
    */
   private findRegimentAtPosition(gridX: number, gridY: number): Regiment | null {
-    // Check each regiment to see if it's at this position
-    // Use a tolerance for clicking near a regiment
-    const tolerance = 1.0;
-
     for (const regiment of this.regiments) {
-      const dx = Math.abs(regiment.getX() - gridX);
-      const dy = Math.abs(regiment.getY() - gridY);
+      const regimentX = Math.round(regiment.getX());
+      const regimentY = Math.round(regiment.getY());
 
-      // Check if the click is within tolerance of the regiment
-      if (dx <= tolerance && dy <= tolerance) {
+      // Check if the click is on the exact same tile as the regiment
+      if (regimentX === gridX && regimentY === gridY) {
         return regiment;
       }
     }
