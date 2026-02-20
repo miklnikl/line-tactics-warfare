@@ -1,4 +1,4 @@
-import type { Order, MoveOrder } from './Order.ts';
+import type { Order, MoveOrder, RotateOrder } from './Order.ts';
 import type { GameMap } from './GameMap.ts';
 import { TurnSimulator } from './TurnSimulator.ts';
 
@@ -149,6 +149,9 @@ export class Regiment {
     if (this.order !== null) {
       if (this.order.type === 'MOVE') {
         this.executeMoveOrder(this.order as MoveOrder);
+      } else if (this.order.type === 'ROTATE') {
+        // ROTATE order: direction already set when order was created, just clear it
+        this.order = null;
       } else if (this.order.type === 'HOLD') {
         // HOLD order: regiment stays in place, no action needed
       }

@@ -50,7 +50,6 @@ export class PixiRenderer {
   private static readonly UNIT_CENTER_OFFSET_X = 32; // Half of tile width (64/2)
   private static readonly UNIT_CENTER_OFFSET_Y = 16; // Half of tile height (32/2)
   private static readonly ARROW_HEAD_SIZE = 10;
-  private static readonly HOLD_ORDER_CIRCLE_RADIUS = 25;
 
   // Visual constants for selection
   private static readonly SELECTION_STROKE_WIDTH = 2;
@@ -485,7 +484,7 @@ export class PixiRenderer {
 
   /**
    * Render visualization for a HOLD order
-   * Shows a circle indicator around the regiment
+    * Shows a diamond indicator around the regiment
    */
   private renderHoldOrderVisualization(regiment: Regiment, map: GameMap): void {
     const graphics = new Graphics();
@@ -505,13 +504,16 @@ export class PixiRenderer {
     // Convert to isometric coordinates
     const regimentIso = gridToIso(regimentX, regimentY, regimentHeight, this.isoConfig);
 
-    // Draw a circle indicator around the regiment (different color for HOLD)
+    // Draw a grey diamond indicator around the regiment for HOLD
     const centerX = regimentIso.isoX + PixiRenderer.UNIT_CENTER_OFFSET_X;
     const centerY = regimentIso.isoY + PixiRenderer.UNIT_CENTER_OFFSET_Y;
+    const tileWidth = this.isoConfig.tileWidth;
+    const tileHeight = this.isoConfig.tileHeight;
+    const diamondIsoX = centerX - tileWidth / 2;
+    const diamondIsoY = centerY - tileHeight / 2;
 
-    graphics
-      .circle(centerX, centerY, PixiRenderer.HOLD_ORDER_CIRCLE_RADIUS)
-      .stroke({ width: 3, color: 0x0000ff }); // Blue circle for HOLD order
+    this.drawIsoDiamond(graphics, diamondIsoX, diamondIsoY, tileWidth, tileHeight);
+    graphics.stroke({ width: 3, color: 0x808080 }); // Grey diamond for HOLD order
   }
 
   /**

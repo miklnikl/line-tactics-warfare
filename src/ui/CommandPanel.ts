@@ -1,6 +1,6 @@
 import type { GameState } from '../game/GameState.ts';
 import type { Regiment } from '../game/Regiment.ts';
-import type { MoveOrder, HoldOrder } from '../game/Order.ts';
+import type { MoveOrder, HoldOrder, RotateOrder } from '../game/Order.ts';
 import { calculateDirectionFromDelta } from '../game/Regiment.ts';
 import type { Application } from 'pixi.js';
 import type { PixiRenderer } from '../renderer/PixiRenderer.ts';
@@ -23,11 +23,11 @@ export class CommandPanel {
   private moveMode: boolean = false;
   private moveButton: HTMLButtonElement;
   private holdButton: HTMLButtonElement;
-  private cancelButton: HTMLButtonElement;
-  private statusText: HTMLElement;
+  private directionButtons: Map<'NORTH' | 'SOUTH' | 'EAST' | 'WEST', HTMLButtonElement> = new Map();
   private canvasClickHandler!: (event: MouseEvent) => void;
   private canvasContextMenuHandler!: (event: MouseEvent) => void;
   private keydownHandler!: (event: KeyboardEvent) => void;
+  private previousSelectedRegimentId: string | null = null;
 
   constructor(gameState: GameState, regiments: Regiment[], app: Application, renderer: PixiRenderer) {
     this.gameState = gameState;
@@ -44,12 +44,9 @@ export class CommandPanel {
     
     // Create UI elements
     this.moveButton = this.createButton('MOVE', () => this.handleMoveCommand());
+    this.moveButton.title = 'Select target tile on map (click again to cancel)';
     this.holdButton = this.createButton('HOLD', () => this.handleHoldCommand());
-    this.cancelButton = this.createButton('Cancel', () => this.cancelMoveMode());
-    this.cancelButton.style.display = 'none';
-    
-    this.statusText = document.createElement('div');
-    this.statusText.className = 'command-status';
+    this.holdButton.title = 'Hold current position';
     
     // Build panel structure
     this.buildPanel();
@@ -87,13 +84,25 @@ export class CommandPanel {
     title.textContent = 'Commands';
     this.panelElement.appendChild(title);
     
-    // Add buttons
+    // Add main command buttons
     this.panelElement.appendChild(this.moveButton);
     this.panelElement.appendChild(this.holdButton);
-    this.panelElement.appendChild(this.cancelButton);
     
-    // Add status text
-    this.panelElement.appendChild(this.statusText);
+    // Create container for directional buttons
+    const directionContainer = document.createElement('div');
+    directionContainer.className = 'direction-buttons-container';
+    
+    // Create directional buttons for rotation
+    const directions: Array<'NORTH' | 'SOUTH' | 'EAST' | 'WEST'> = ['NORTH', 'SOUTH', 'EAST', 'WEST'];
+    for (const direction of directions) {
+      const button = this.createButton(direction, () => this.handleRotateDirection(direction));
+      button.className = 'command-button direction-button';
+      button.title = `Rotate to face ${direction}`;
+      this.directionButtons.set(direction, button);
+      directionContainer.appendChild(button);
+    }
+    
+    this.panelElement.appendChild(directionContainer);
   }
 
   /**
@@ -107,23 +116,26 @@ export class CommandPanel {
     if (phase !== 'PLANNING' || !selectedId) {
       this.panelElement.style.display = 'none';
       this.moveMode = false;
+      this.previousSelectedRegimentId = null;
+      this.moveButton.classList.remove('pressed');
       return;
     }
     
+    // Detect when a new regiment is selected and auto-activate MOVE mode
+    if (selectedId !== this.previousSelectedRegimentId && !this.moveMode) {
+      this.moveMode = true;
+    }
+    this.previousSelectedRegimentId = selectedId;
+    
     this.panelElement.style.display = 'block';
     
-    // Update button states
+    // Update button states based on move mode
     if (this.moveMode) {
-      this.moveButton.style.display = 'none';
-      this.holdButton.style.display = 'none';
-      this.cancelButton.style.display = 'block';
-      this.statusText.textContent = 'Click on the map to set move target';
-      this.statusText.style.display = 'block';
+      // In move mode: MOVE button has pressed state
+      this.moveButton.classList.add('pressed');
     } else {
-      this.moveButton.style.display = 'block';
-      this.holdButton.style.display = 'block';
-      this.cancelButton.style.display = 'none';
-      this.statusText.style.display = 'none';
+      // Normal mode: MOVE button is unpressed
+      this.moveButton.classList.remove('pressed');
     }
   }
 
@@ -135,13 +147,13 @@ export class CommandPanel {
       return;
     }
     
-    const selectedId = this.gameState.getSelectedRegimentId();
-    if (!selectedId) {
-      return;
+    // Toggle move mode - clicking the button cancels if already in move mode
+    if (this.moveMode) {
+      this.moveMode = false;
+    } else {
+      this.moveMode = true;
     }
     
-    // Enter move mode - wait for canvas click to set target
-    this.moveMode = true;
     this.update();
   }
 
@@ -171,11 +183,97 @@ export class CommandPanel {
   }
 
   /**
+   * Handle rotation direction button click - directly rotate without entering a mode
+   */
+  private handleRotateDirection(direction: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST'): void {
+    if (this.gameState.getPhase() !== 'PLANNING') {
+      return;
+    }
+    
+    const selectedId = this.gameState.getSelectedRegimentId();
+    if (!selectedId) {
+      return;
+    }
+    
+    const regiment = this.regimentMap.get(selectedId);
+    if (!regiment) {
+      return;
+    }
+    
+    // Set the direction
+    regiment.setDirection(direction);
+    
+    // Assign ROTATE order
+    const rotateOrder: RotateOrder = { type: 'ROTATE', direction };
+    regiment.setOrder(rotateOrder);
+    
+    console.log(`ROTATE order assigned to ${selectedId}: direction ${direction}`);
+  }
+
+  /**
    * Cancel move mode
    */
   private cancelMoveMode(): void {
     this.moveMode = false;
     this.update();
+  }
+
+  /**
+   * Get the regiment at a specific position
+   * @param x - The x coordinate to check
+   * @param y - The y coordinate to check
+   * @param excludeRegimentId - The regiment ID to exclude from the search (optional)
+   * @returns The regiment at this position, or null if none found
+   */
+  private getRegimentAtPosition(x: number, y: number, excludeRegimentId?: string): Regiment | null {
+    const regimentTileX = Math.round(x);
+    const regimentTileY = Math.round(y);
+    
+    for (const [regimentId, regiment] of this.regimentMap) {
+      // Skip the excluded regiment if provided
+      if (excludeRegimentId && regimentId === excludeRegimentId) {
+        continue;
+      }
+      
+      const regimentX = Math.round(regiment.getX());
+      const regimentY = Math.round(regiment.getY());
+      
+      // Check if this regiment is at the position
+      if (regimentX === regimentTileX && regimentY === regimentTileY) {
+        return regiment;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Check if a tile is already targeted as a move destination by another regiment
+   * @param x - The x coordinate to check
+   * @param y - The y coordinate to check
+   * @param excludeRegimentId - The regiment ID to exclude from the check
+   * @returns True if another regiment is targeting this tile, false otherwise
+   */
+  private isTileTargetedByOtherRegiment(x: number, y: number, excludeRegimentId: string): boolean {
+    const targetTileX = Math.round(x);
+    const targetTileY = Math.round(y);
+    
+    for (const [regimentId, regiment] of this.regimentMap) {
+      // Skip the regiment we're checking for
+      if (regimentId === excludeRegimentId) {
+        continue;
+      }
+      
+      const order = regiment.getOrder();
+      if (order && order.type === 'MOVE') {
+        const moveOrder = order as MoveOrder;
+        if (moveOrder.targetX === targetTileX && moveOrder.targetY === targetTileY) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
   }
 
   /**
@@ -218,12 +316,32 @@ export class CommandPanel {
       const map = this.gameState.getMap();
       if (!map.isValidPosition(targetX, targetY)) {
         console.log(`Invalid target position (${targetX}, ${targetY}) - outside map bounds`);
-        this.statusText.textContent = 'Invalid target - click within the map';
-        this.statusText.style.color = '#ff6b6b';
-        setTimeout(() => {
-          this.statusText.textContent = 'Click on the map to set move target';
-          this.statusText.style.color = '';
-        }, 1500);
+        return;
+      }
+      
+      // Check if target tile is already occupied by another regiment
+      const occupyingRegiment = this.getRegimentAtPosition(targetX, targetY, selectedId);
+      if (occupyingRegiment) {
+        // Auto-select the regiment on the occupied tile
+        console.log(`Tile occupied by ${occupyingRegiment.getId()} - selecting that regiment`);
+        this.gameState.setSelectedRegimentId(occupyingRegiment.getId());
+        this.moveMode = false;
+        this.update();
+        return;
+      }
+      
+      // Check if target tile is already targeted by another regiment
+      const isDoubleTargeted = this.isTileTargetedByOtherRegiment(targetX, targetY, selectedId);
+      if (isDoubleTargeted) {
+        console.log(`Target position (${targetX}, ${targetY}) - already targeted by another regiment`);
+        return;
+      }
+      
+      // Check if target is the same tile as current position
+      const currentX = Math.round(regiment.getX());
+      const currentY = Math.round(regiment.getY());
+      if (targetX === currentX && targetY === currentY) {
+        console.log(`Target position (${targetX}, ${targetY}) - same as current position`);
         return;
       }
       
