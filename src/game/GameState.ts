@@ -6,6 +6,9 @@ import { GameMap } from './GameMap.ts';
  */
 export type GamePhase = 'PLANNING' | 'SIMULATION';
 
+type PhaseChangeListener = (phase: GamePhase) => void;
+type SelectionChangeListener = (regimentId: string | null) => void;
+
 /**
  * GameState stores the complete game state for a WEGO-based strategy game.
  * 
@@ -20,6 +23,8 @@ export class GameState {
   private units: Unit[];
   private map: GameMap;
   private selectedRegimentId: string | null;
+  private phaseListeners: Set<PhaseChangeListener>;
+  private selectionListeners: Set<SelectionChangeListener>;
 
   constructor(map?: GameMap) {
     this.phase = 'PLANNING';
@@ -28,6 +33,24 @@ export class GameState {
     // Use provided map or create a default 20x20 map
     this.map = map ?? new GameMap(20, 20);
     this.selectedRegimentId = null;
+    this.phaseListeners = new Set();
+    this.selectionListeners = new Set();
+  }
+
+  /**
+   * Subscribe to phase changes. Returns an unsubscribe function.
+   */
+  onPhaseChange(listener: PhaseChangeListener): () => void {
+    this.phaseListeners.add(listener);
+    return () => { this.phaseListeners.delete(listener); };
+  }
+
+  /**
+   * Subscribe to selected regiment changes. Returns an unsubscribe function.
+   */
+  onSelectionChange(listener: SelectionChangeListener): () => void {
+    this.selectionListeners.add(listener);
+    return () => { this.selectionListeners.delete(listener); };
   }
 
   /**
@@ -73,6 +96,7 @@ export class GameState {
     if (this.phase === 'PLANNING') {
       this.phase = 'SIMULATION';
       this.tick = 0;
+      this.phaseListeners.forEach(l => l(this.phase));
     }
   }
 
@@ -83,6 +107,7 @@ export class GameState {
     if (this.phase === 'SIMULATION') {
       this.phase = 'PLANNING';
       this.tick = 0;
+      this.phaseListeners.forEach(l => l(this.phase));
     }
   }
 
@@ -99,8 +124,9 @@ export class GameState {
    * Pass null to clear selection
    */
   setSelectedRegimentId(regimentId: string | null): void {
-    if (this.phase === 'PLANNING') {
+    if (this.phase === 'PLANNING' && this.selectedRegimentId !== regimentId) {
       this.selectedRegimentId = regimentId;
+      this.selectionListeners.forEach(l => l(this.selectedRegimentId));
     }
   }
 

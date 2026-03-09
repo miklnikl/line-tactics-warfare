@@ -83,9 +83,6 @@ function onAppReady(app: Application) {
     
     // Update the command panel
     commandPanel.update()
-    
-    // Update UI state based on phase
-    updateUIState()
   })
 
   // For demonstration: Add debug logging and a button to start simulation
@@ -148,7 +145,7 @@ function onAppReady(app: Application) {
 
   // Add "End Turn" button event listener
   // Note: Direct DOM access is used here because this game logic runs outside React's control.
-  // The button is rendered by React but its behavior is managed by the game loop.
+  // The button is rendered by React but its click behavior is managed by the game loop.
   const endTurnButton = document.getElementById('end-turn-button') as HTMLButtonElement | null
   if (endTurnButton) {
     endTurnButton.addEventListener('click', () => {
@@ -169,30 +166,6 @@ function onAppReady(app: Application) {
         }, 100)
       }
     })
-  }
-
-  // Get phase indicator element
-  // Note: Direct DOM query is required in this hybrid architecture where game logic
-  // runs outside React. The UI structure is managed by React but updated imperatively
-  // by the game loop for performance and to maintain separation of concerns.
-  const phaseIndicator = document.getElementById('phase-indicator')
-
-  /**
-   * Update UI state based on current game phase
-   */
-  function updateUIState(): void {
-    const phase = gameState.getPhase()
-    
-    // Update End Turn button state
-    if (endTurnButton) {
-      endTurnButton.disabled = phase !== 'PLANNING'
-    }
-    
-    // Update phase indicator
-    if (phaseIndicator) {
-      phaseIndicator.textContent = `Phase: ${phase}`
-      phaseIndicator.className = `phase-indicator phase-${phase.toLowerCase()}`
-    }
   }
 }
 
