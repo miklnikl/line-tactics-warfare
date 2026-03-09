@@ -5,7 +5,7 @@ import { gameState, regimentRegistry } from './game/GameService.ts'
 import { TurnSimulator } from './game/TurnSimulator.ts'
 import { GameLoop } from './game/GameLoop.ts'
 import { PixiRenderer } from './renderer/PixiRenderer.ts'
-import { Regiment } from './game/Regiment.ts'
+import { Regiment, calculateDirectionFromDelta } from './game/Regiment.ts'
 import type { MoveOrder } from './game/Order.ts'
 import { InputHandler } from './input/InputHandler.ts'
 import { RegimentInfoPanel } from './ui/RegimentInfoPanel.ts'
@@ -112,7 +112,14 @@ function onAppReady(app: Application) {
     if (event.key === 'm' || event.key === 'M') {
       if (gameState.getPhase() === 'PLANNING') {
         // Assign a move order to regiment 1: move from (2,3) to (10,10)
-        const moveOrder: MoveOrder = { type: 'MOVE', targetX: 10, targetY: 10 }
+        const moveOrder: MoveOrder = {
+          type: 'MOVE',
+          targetState: {
+            x: 10,
+            y: 10,
+            direction: calculateDirectionFromDelta(10 - regiments[0].getX(), 10 - regiments[0].getY())
+          }
+        }
         regiments[0].setOrder(moveOrder)
         console.log('Move order assigned to regiment-1: target (10, 10)')
         console.log('Current position:', regiments[0].getX(), regiments[0].getY())

@@ -1,4 +1,4 @@
-import type { Order, MoveOrder } from './Order.ts';
+import type { Order } from './Order.ts';
 import type { GameMap } from './GameMap.ts';
 import { TurnSimulator } from './TurnSimulator.ts';
 
@@ -6,6 +6,28 @@ import { TurnSimulator } from './TurnSimulator.ts';
  * Facing direction for a regiment on the battlefield
  */
 export type Direction = 'NORTH' | 'SOUTH' | 'EAST' | 'WEST' | 'NORTHEAST' | 'NORTHWEST' | 'SOUTHEAST' | 'SOUTHWEST';
+
+/**
+ * Represents the current simulation state of a regiment.
+ * This is the single source of truth for the regiment's position and orientation.
+ */
+export interface RegimentState {
+  x: number;
+  y: number;
+  direction: Direction;
+}
+
+/**
+ * Used for smooth movement interpolation during simulation.
+ * This state does not affect game logic and exists only to support rendering interpolation.
+ */
+export interface MovementState {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  tickProgress: number;
+}
 
 /**
  * Calculate the direction from a delta vector
@@ -58,25 +80,21 @@ export function calculateDirectionFromDelta(dx: number, dy: number): Direction {
  */
 export class Regiment {
   private id: string;
-  private x: number;
-  private y: number;
-  private direction: Direction;
+
+  // Current state of the regiment
+  private state: RegimentState;
+
+  // Current issued order
   private order: Order | null;
-  
-  // Movement state for smooth interpolation
-  private moveStartX: number | null;
-  private moveStartY: number | null;
-  private moveTickCount: number;
+
+  // Movement interpolation state (only active during simulation)
+  private movement: MovementState | null;
 
   constructor(id: string, x: number, y: number, direction: Direction = 'NORTH') {
     this.id = id;
-    this.x = x;
-    this.y = y;
-    this.direction = direction;
+    this.state = { x, y, direction };
     this.order = null;
-    this.moveStartX = null;
-    this.moveStartY = null;
-    this.moveTickCount = 0;
+    this.movement = null;
   }
 
   /**
@@ -90,21 +108,35 @@ export class Regiment {
    * Get the current X position on the grid
    */
   getX(): number {
-    return this.x;
+    return this.state.x;
   }
 
   /**
    * Get the current Y position on the grid
    */
   getY(): number {
-    return this.y;
+    return this.state.y;
   }
 
   /**
    * Get the facing direction
    */
   getDirection(): Direction {
-    return this.direction;
+    return this.state.direction;
+  }
+
+  /**
+   * Get the current regiment state (position and direction)
+   */
+  getState(): RegimentState {
+    return this.state;
+  }
+
+  /**
+   * Get the current movement interpolation state (null if not moving)
+   */
+  getMovement(): MovementState | null {
+    return this.movement;
   }
 
   /**
@@ -118,15 +150,15 @@ export class Regiment {
    * Set the grid position
    */
   setPosition(x: number, y: number): void {
-    this.x = x;
-    this.y = y;
+    this.state.x = x;
+    this.state.y = y;
   }
 
   /**
    * Set the facing direction
    */
   setDirection(direction: Direction): void {
-    this.direction = direction;
+    this.state.direction = direction;
   }
 
   /**
@@ -134,10 +166,8 @@ export class Regiment {
    */
   setOrder(order: Order | null): void {
     this.order = order;
-    // Reset movement state when a new order is assigned
-    this.moveStartX = null;
-    this.moveStartY = null;
-    this.moveTickCount = 0;
+    // Reset movement interpolation state when a new order is assigned
+    this.movement = null;
   }
 
   /**
@@ -148,9 +178,10 @@ export class Regiment {
     // Execute current order if any
     if (this.order !== null) {
       if (this.order.type === 'MOVE') {
-        this.executeMoveOrder(this.order as MoveOrder);
+        this.executeMoveOrder(this.order);
       } else if (this.order.type === 'ROTATE') {
-        // ROTATE order: direction already set when order was created, just clear it
+        // ROTATE order: apply target direction from order and clear
+        this.state.direction = this.order.targetState.direction;
         this.order = null;
       } else if (this.order.type === 'HOLD') {
         // HOLD order: regiment stays in place, no action needed
@@ -166,54 +197,52 @@ export class Regiment {
 
   /**
    * Execute a move order over multiple ticks
-   * Movement is interpolated to reach the target smoothly over the course of a turn
+   * Movement is interpolated from state to order.targetState smoothly over the course of a turn
    * 
-   * @param order - The move order to execute
+   * @param order - The order to execute (must be type 'MOVE')
    */
-  private executeMoveOrder(order: MoveOrder): void {
-    // Initialize movement state on first tick of this order
-    if (this.moveStartX === null || this.moveStartY === null) {
-      this.moveStartX = this.x;
-      this.moveStartY = this.y;
-      this.moveTickCount = 0;
-      
+  private executeMoveOrder(order: Order): void {
+    // Initialize movement interpolation state on first tick of this order
+    if (this.movement === null) {
+      this.movement = {
+        startX: this.state.x,
+        startY: this.state.y,
+        endX: order.targetState.x,
+        endY: order.targetState.y,
+        tickProgress: 0
+      };
+
       // Check if already at target before starting movement
-      if (this.moveStartX === order.targetX && this.moveStartY === order.targetY) {
+      if (this.movement.startX === order.targetState.x && this.movement.startY === order.targetState.y) {
         this.order = null;
+        this.movement = null;
         return;
       }
-      
+
       // Update direction to face the movement direction
-      const deltaX = order.targetX - this.moveStartX;
-      const deltaY = order.targetY - this.moveStartY;
-      this.direction = calculateDirectionFromDelta(deltaX, deltaY);
+      this.state.direction = order.targetState.direction;
     }
     
-    // Increment tick count
-    this.moveTickCount++;
-    
-    // Calculate total distance
-    const deltaX = order.targetX - this.moveStartX;
-    const deltaY = order.targetY - this.moveStartY;
+    // Increment tick progress
+    this.movement.tickProgress++;
     
     // Calculate progress (0 to 1)
-    const progress = Math.min(this.moveTickCount / TurnSimulator.getTicksPerTurn(), 1.0);
+    const progress = Math.min(this.movement.tickProgress / TurnSimulator.getTicksPerTurn(), 1.0);
     
     // Calculate new position using linear interpolation
-    const newX = this.moveStartX + deltaX * progress;
-    const newY = this.moveStartY + deltaY * progress;
-    
-    // Update position
-    this.x = newX;
-    this.y = newY;
+    const deltaX = this.movement.endX - this.movement.startX;
+    const deltaY = this.movement.endY - this.movement.startY;
+    this.state.x = this.movement.startX + deltaX * progress;
+    this.state.y = this.movement.startY + deltaY * progress;
     
     // Check if we've reached the target (at end of turn)
     if (progress >= 1.0) {
       // Snap to exact target position
-      this.x = order.targetX;
-      this.y = order.targetY;
-      // Clear the order
+      this.state.x = this.movement.endX;
+      this.state.y = this.movement.endY;
+      // Clear the order and movement state
       this.order = null;
+      this.movement = null;
     }
   }
 
@@ -229,7 +258,7 @@ export class Regiment {
    * or handle the potential error.
    */
   queryTerrainHeight(map: GameMap): number {
-    return map.getTileHeight(this.x, this.y);
+    return map.getTileHeight(this.state.x, this.state.y);
   }
 
   /**
