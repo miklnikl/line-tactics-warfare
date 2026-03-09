@@ -68,21 +68,11 @@ export class RegimentInfoPanel {
     const x = regiment.getX();
     const y = regiment.getY();
     const direction = regiment.getDirection();
-    const order = regiment.getOrder();
+    const orders = regiment.getOrders();
     
     // Format position with 1 decimal place for display
     const posX = x.toFixed(1);
     const posY = y.toFixed(1);
-    
-    // Format order information
-    let orderText = 'None';
-    if (order) {
-      if (order.type === 'MOVE') {
-        orderText = `MOVE to (${order.targetState.x}, ${order.targetState.y})`;
-      } else {
-        orderText = order.type;
-      }
-    }
     
     // Clear existing content
     this.panelElement.innerHTML = '';
@@ -104,7 +94,19 @@ export class RegimentInfoPanel {
     this.appendInfoRow('ID', id);
     this.appendInfoRow('Position', `(${posX}, ${posY})`);
     this.appendInfoRow('Direction', direction);
-    this.appendInfoRow('Order', orderText);
+    
+    // Show orders queue
+    if (orders.length === 0) {
+      this.appendInfoRow('Orders', 'None');
+    } else {
+      orders.forEach((order, index) => {
+        let orderText: string = order.type;
+        if (order.type === 'MOVE') {
+          orderText = `MOVE to (${order.targetState.x}, ${order.targetState.y})`;
+        }
+        this.appendInfoRow(`Order ${index + 1}`, orderText);
+      });
+    }
   }
 
   /**

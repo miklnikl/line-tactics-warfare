@@ -79,13 +79,15 @@ export function calculateDirectionFromDelta(dx: number, dy: number): Direction {
  * - Can update its state per simulation tick
  */
 export class Regiment {
+  static readonly MAX_ORDERS = 3;
+
   private id: string;
 
   // Current state of the regiment
   private state: RegimentState;
 
-  // Current issued order
-  private order: Order | null;
+  // Queue of issued orders (executed in sequence, max MAX_ORDERS)
+  private orders: Order[];
 
   // Movement interpolation state (only active during simulation)
   private movement: MovementState | null;
@@ -93,7 +95,7 @@ export class Regiment {
   constructor(id: string, x: number, y: number, direction: Direction = 'NORTH') {
     this.id = id;
     this.state = { x, y, direction };
-    this.order = null;
+    this.orders = [];
     this.movement = null;
   }
 
@@ -140,10 +142,17 @@ export class Regiment {
   }
 
   /**
-   * Get the current order (if any)
+   * Get the current order (first in queue), or null if no orders
    */
   getOrder(): Order | null {
-    return this.order;
+    return this.orders[0] ?? null;
+  }
+
+  /**
+   * Get all orders in the queue (read-only)
+   */
+  getOrders(): readonly Order[] {
+    return this.orders;
   }
 
   /**
@@ -162,12 +171,67 @@ export class Regiment {
   }
 
   /**
-   * Assign an order to this regiment
+   * Replace the entire order queue with a single order (or clear it if null).
+   * Resets movement interpolation state.
    */
   setOrder(order: Order | null): void {
-    this.order = order;
-    // Reset movement interpolation state when a new order is assigned
+    this.orders = order ? [order] : [];
+    // Reset movement interpolation state when orders change
     this.movement = null;
+  }
+
+  /**
+   * Add an order to the end of the queue.
+   * Returns true if successful, false if the queue is already full (max MAX_ORDERS).
+   */
+  addOrder(order: Order): boolean {
+    if (this.orders.length >= Regiment.MAX_ORDERS) {
+      return false;
+    }
+    this.orders.push(order);
+    return true;
+  }
+
+  /**
+   * Remove the order at the given index from the queue.
+   * If the current (first) order is removed, movement interpolation is reset.
+   */
+  removeOrder(index: number): void {
+    if (index < 0 || index >= this.orders.length) {
+      return;
+    }
+    this.orders.splice(index, 1);
+    if (index === 0) {
+      this.movement = null;
+    }
+  }
+
+  /**
+   * Move the order at the given index one position earlier in the queue.
+   * If the resulting first order changes, movement interpolation is reset.
+   */
+  moveOrderUp(index: number): void {
+    if (index <= 0 || index >= this.orders.length) {
+      return;
+    }
+    [this.orders[index - 1], this.orders[index]] = [this.orders[index], this.orders[index - 1]];
+    if (index === 1) {
+      this.movement = null;
+    }
+  }
+
+  /**
+   * Move the order at the given index one position later in the queue.
+   * If the current first order changes, movement interpolation is reset.
+   */
+  moveOrderDown(index: number): void {
+    if (index < 0 || index >= this.orders.length - 1) {
+      return;
+    }
+    [this.orders[index], this.orders[index + 1]] = [this.orders[index + 1], this.orders[index]];
+    if (index === 0) {
+      this.movement = null;
+    }
   }
 
   /**
@@ -175,15 +239,16 @@ export class Regiment {
    * This is called during the SIMULATION phase to advance the unit's behavior
    */
   updateTick(): void {
-    // Execute current order if any
-    if (this.order !== null) {
-      if (this.order.type === 'MOVE') {
-        this.executeMoveOrder(this.order);
-      } else if (this.order.type === 'ROTATE') {
-        // ROTATE order: apply target direction from order and clear
-        this.state.direction = this.order.targetState.direction;
-        this.order = null;
-      } else if (this.order.type === 'HOLD') {
+    // Execute current order (first in queue) if any
+    if (this.orders.length > 0) {
+      const currentOrder = this.orders[0];
+      if (currentOrder.type === 'MOVE') {
+        this.executeMoveOrder(currentOrder);
+      } else if (currentOrder.type === 'ROTATE') {
+        // ROTATE order: apply target direction from order and advance queue
+        this.state.direction = currentOrder.targetState.direction;
+        this.orders.shift();
+      } else if (currentOrder.type === 'HOLD') {
         // HOLD order: regiment stays in place, no action needed
       }
       // Other order types can be added here in the future
@@ -214,7 +279,7 @@ export class Regiment {
 
       // Check if already at target before starting movement
       if (this.movement.startX === order.targetState.x && this.movement.startY === order.targetState.y) {
-        this.order = null;
+        this.orders.shift();
         this.movement = null;
         return;
       }
@@ -240,8 +305,8 @@ export class Regiment {
       // Snap to exact target position
       this.state.x = this.movement.endX;
       this.state.y = this.movement.endY;
-      // Clear the order and movement state
-      this.order = null;
+      // Advance to the next order in the queue
+      this.orders.shift();
       this.movement = null;
     }
   }

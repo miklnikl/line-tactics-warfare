@@ -40,6 +40,9 @@ export const App: React.FC<AppProps> = ({ onAppReady }) => {
           onHold={() => commandService.hold()}
           onRotate={(dir) => commandService.rotate(dir)}
           onEndTurn={() => commandService.endTurn()}
+          onRemoveOrder={(index) => commandService.removeOrder(index)}
+          onMoveOrderUp={(index) => commandService.moveOrderUp(index)}
+          onMoveOrderDown={(index) => commandService.moveOrderDown(index)}
         />
       }
     >

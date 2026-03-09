@@ -18,6 +18,9 @@ class CommandServiceClass {
   private holdHandler?: () => void;
   private rotateHandler?: (dir: Direction) => void;
   private endTurnHandler?: () => void;
+  private removeOrderHandler?: (index: number) => void;
+  private moveOrderUpHandler?: (index: number) => void;
+  private moveOrderDownHandler?: (index: number) => void;
 
   // ---------------------------------------------------------------------------
   // Handler registration (called from game logic)
@@ -39,6 +42,18 @@ class CommandServiceClass {
     this.endTurnHandler = handler;
   }
 
+  registerRemoveOrderHandler(handler: (index: number) => void): void {
+    this.removeOrderHandler = handler;
+  }
+
+  registerMoveOrderUpHandler(handler: (index: number) => void): void {
+    this.moveOrderUpHandler = handler;
+  }
+
+  registerMoveOrderDownHandler(handler: (index: number) => void): void {
+    this.moveOrderDownHandler = handler;
+  }
+
   // ---------------------------------------------------------------------------
   // Command invocation (called from React UI)
   // ---------------------------------------------------------------------------
@@ -57,6 +72,18 @@ class CommandServiceClass {
 
   endTurn(): void {
     this.endTurnHandler?.();
+  }
+
+  removeOrder(index: number): void {
+    this.removeOrderHandler?.(index);
+  }
+
+  moveOrderUp(index: number): void {
+    this.moveOrderUpHandler?.(index);
+  }
+
+  moveOrderDown(index: number): void {
+    this.moveOrderDownHandler?.(index);
   }
 
   // ---------------------------------------------------------------------------

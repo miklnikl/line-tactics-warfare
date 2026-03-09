@@ -16,6 +16,9 @@ interface BottomPanelProps {
   onHold: () => void;
   onRotate: (direction: Direction) => void;
   onEndTurn: () => void;
+  onRemoveOrder: (index: number) => void;
+  onMoveOrderUp: (index: number) => void;
+  onMoveOrderDown: (index: number) => void;
 }
 
 /**
@@ -38,11 +41,20 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
   onHold,
   onRotate,
   onEndTurn,
+  onRemoveOrder,
+  onMoveOrderUp,
+  onMoveOrderDown,
 }) => {
   return (
     <div className="bottom-panel">
       <GameInfoPanel phase={phase} onEndTurn={onEndTurn} />
-      <RegimentInfoPanel regiment={regiment} phase={phase} />
+      <RegimentInfoPanel
+        regiment={regiment}
+        phase={phase}
+        onRemoveOrder={onRemoveOrder}
+        onMoveOrderUp={onMoveOrderUp}
+        onMoveOrderDown={onMoveOrderDown}
+      />
       <CommandPanel
         selectedRegimentId={selectedRegimentId}
         phase={phase}
