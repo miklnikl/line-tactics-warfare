@@ -443,12 +443,6 @@ button:disabled,
    Bottom Panel – fixed-height RTS-style HUD
    ========================================================================= */
 
-/* Hidden legacy DOM targets used by imperative RegimentInfoPanel.ts / CommandPanel.ts */
-.info-panel--hidden-legacy,
-.command-panel--hidden-legacy {
-  display: none !important;
-}
-
 /* Main container */
 .bottom-panel {
   flex-shrink: 0;

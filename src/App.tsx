@@ -42,11 +42,7 @@ export const App: React.FC<AppProps> = ({ onAppReady }) => {
           onEndTurn={() => commandService.endTurn()}
         />
       }
-    >
-      {/* Legacy hidden DOM targets required by imperative RegimentInfoPanel.ts / CommandPanel.ts */}
-      <div id="regiment-info-panel" className="info-panel--hidden-legacy" />
-      <div id="command-panel" className="command-panel--hidden-legacy" />
-    </GameLayout>
+    />
   )
 }
 
