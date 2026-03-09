@@ -1,6 +1,5 @@
 import type { GameState, GamePhase } from '../game/GameState.ts';
 import type { Regiment } from '../game/Regiment.ts';
-import type { MoveOrder } from '../game/Order.ts';
 
 /**
  * RegimentInfoPanel displays information about the currently selected regiment.
@@ -79,8 +78,7 @@ export class RegimentInfoPanel {
     let orderText = 'None';
     if (order) {
       if (order.type === 'MOVE') {
-        const moveOrder = order as MoveOrder;
-        orderText = `MOVE to (${moveOrder.targetX}, ${moveOrder.targetY})`;
+        orderText = `MOVE to (${order.targetState.x}, ${order.targetState.y})`;
       } else {
         orderText = order.type;
       }

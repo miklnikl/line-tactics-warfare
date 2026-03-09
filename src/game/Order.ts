@@ -1,3 +1,5 @@
+import type { RegimentState } from './Regiment.ts';
+
 /**
  * Order types for WEGO gameplay
  * Defines all possible order types that can be assigned to regiments
@@ -14,24 +16,25 @@ export type OrderType = 'MOVE' | 'HOLD' | 'ROTATE';
  * Base interface for regiment orders
  * All orders must implement this interface
  * Orders are pure data objects that can be assigned during the PLANNING phase
+ * The targetState defines the desired state the regiment should reach when this order completes
  */
 export interface Order {
   type: OrderType;
+  targetState: RegimentState;
 }
 
 /**
- * Move order with target grid position
- * Instructs a regiment to move to a specific grid coordinate
+ * Move order - instructs a regiment to move to a target position
+ * The target position and facing direction are encoded in targetState
  */
 export interface MoveOrder extends Order {
   type: 'MOVE';
-  targetX: number;
-  targetY: number;
 }
 
 /**
  * Hold order - regiment stays in place
  * Instructs a regiment to hold its current position
+ * targetState reflects the regiment's current state (no change)
  */
 export interface HoldOrder extends Order {
   type: 'HOLD';
@@ -39,10 +42,9 @@ export interface HoldOrder extends Order {
 
 /**
  * Rotate order - regiment changes facing direction only
- * Instructs a regiment to rotate to face a specific cardinal direction
+ * Instructs a regiment to rotate to face the direction specified in targetState
  * Does not change position, only the direction the regiment faces
  */
 export interface RotateOrder extends Order {
   type: 'ROTATE';
-  direction: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST';
 }

@@ -4,7 +4,7 @@ import type { GameState } from '../game/GameState.ts';
 import type { GameMap } from '../game/GameMap.ts';
 import type { Unit } from '../game/Unit.ts';
 import type { Regiment } from '../game/Regiment.ts';
-import type { MoveOrder } from '../game/Order.ts';
+import type { Order } from '../game/Order.ts';
 import type { Direction } from '../game/Regiment.ts';
 import { gridToIso, isoToGrid, type IsoConfig, DEFAULT_ISO_CONFIG } from '../utils/iso.ts';
 
@@ -403,7 +403,7 @@ export class PixiRenderer {
       }
 
       if (order.type === 'MOVE') {
-        this.renderMoveOrderVisualization(regiment, order as MoveOrder, map);
+        this.renderMoveOrderVisualization(regiment, order, map);
       } else if (order.type === 'HOLD') {
         this.renderHoldOrderVisualization(regiment, map);
       }
@@ -414,7 +414,7 @@ export class PixiRenderer {
    * Render visualization for a MOVE order
    * Shows an arrow from regiment to target tile and highlights the target
    */
-  private renderMoveOrderVisualization(regiment: Regiment, order: MoveOrder, map: GameMap): void {
+  private renderMoveOrderVisualization(regiment: Regiment, order: Order, map: GameMap): void {
     const graphics = new Graphics();
     this.orderVisualizationLayer.addChild(graphics);
 
@@ -429,9 +429,9 @@ export class PixiRenderer {
       regimentHeight = map.getTileHeight(regimentTileX, regimentTileY);
     }
 
-    // Get target position
-    const targetX = order.targetX;
-    const targetY = order.targetY;
+    // Get target position from the order's targetState
+    const targetX = order.targetState.x;
+    const targetY = order.targetState.y;
     let targetHeight = 0;
     
     if (map.isValidPosition(targetX, targetY)) {

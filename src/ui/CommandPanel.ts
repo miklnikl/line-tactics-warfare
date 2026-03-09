@@ -186,8 +186,15 @@ export class CommandPanel {
       return;
     }
     
-    // Assign HOLD order
-    const holdOrder: HoldOrder = { type: 'HOLD' };
+    // Assign HOLD order with the regiment's current state as targetState
+    const holdOrder: HoldOrder = {
+      type: 'HOLD',
+      targetState: {
+        x: regiment.getX(),
+        y: regiment.getY(),
+        direction: regiment.getDirection()
+      }
+    };
     regiment.setOrder(holdOrder);
     
     console.log(`HOLD order assigned to ${selectedId}`);
@@ -211,11 +218,15 @@ export class CommandPanel {
       return;
     }
     
-    // Set the direction
-    regiment.setDirection(direction);
-    
-    // Assign ROTATE order
-    const rotateOrder: RotateOrder = { type: 'ROTATE', direction };
+    // Assign ROTATE order with the target direction encoded in targetState
+    const rotateOrder: RotateOrder = {
+      type: 'ROTATE',
+      targetState: {
+        x: regiment.getX(),
+        y: regiment.getY(),
+        direction
+      }
+    };
     regiment.setOrder(rotateOrder);
     
     console.log(`ROTATE order assigned to ${selectedId}: direction ${direction}`);
@@ -278,8 +289,7 @@ export class CommandPanel {
       
       const order = regiment.getOrder();
       if (order && order.type === 'MOVE') {
-        const moveOrder = order as MoveOrder;
-        if (moveOrder.targetX === targetTileX && moveOrder.targetY === targetTileY) {
+        if (Math.round(order.targetState.x) === targetTileX && Math.round(order.targetState.y) === targetTileY) {
           return true;
         }
       }
@@ -357,21 +367,23 @@ export class CommandPanel {
         return;
       }
       
-      // Calculate and set direction based on movement vector
+      // Calculate direction based on movement vector (stored in targetState, applied during simulation)
       const deltaX = targetX - regiment.getX();
       const deltaY = targetY - regiment.getY();
       const newDirection = calculateDirectionFromDelta(deltaX, deltaY);
-      regiment.setDirection(newDirection);
       
-      // Assign MOVE order with validated target position
+      // Assign MOVE order with validated target position and facing direction in targetState
       const moveOrder: MoveOrder = {
         type: 'MOVE',
-        targetX,
-        targetY
+        targetState: {
+          x: targetX,
+          y: targetY,
+          direction: newDirection
+        }
       };
       regiment.setOrder(moveOrder);
       
-      console.log(`MOVE order assigned to ${selectedId}: target (${moveOrder.targetX}, ${moveOrder.targetY})`);
+      console.log(`MOVE order assigned to ${selectedId}: target (${moveOrder.targetState.x}, ${moveOrder.targetState.y})`);
       
       // Exit move mode
       this.moveMode = false;
