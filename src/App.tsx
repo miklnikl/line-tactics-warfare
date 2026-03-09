@@ -2,7 +2,14 @@ import React from 'react'
 import './style.css'
 import { GameLayout } from './components/GameLayout'
 import type { Application } from 'pixi.js'
-import { useGamePhase, useSelectedRegimentId } from './hooks/useGameState'
+import {
+  useGamePhase,
+  useSelectedRegimentId,
+  useSelectedRegimentData,
+  useMoveMode,
+} from './hooks/useGameState'
+import { BottomPanel } from './ui/components/BottomPanel'
+import { commandService } from './game/CommandService'
 
 interface AppProps {
   onAppReady?: (app: Application) => void;
@@ -10,31 +17,35 @@ interface AppProps {
 
 /**
  * Root React component for the Line Tactics Warfare application.
- * Provides layout structure for the game canvas and HUD elements.
- * Game logic remains external to React; state changes are received
- * via the useGamePhase / useSelectedRegimentId subscription hooks.
+ * Provides layout structure for the game canvas and the fixed bottom HUD.
+ * Game logic remains external to React; state changes are received via the
+ * useGamePhase / useSelectedRegimentId subscription hooks.
  */
 export const App: React.FC<AppProps> = ({ onAppReady }) => {
   const phase = useGamePhase();
   const selectedRegimentId = useSelectedRegimentId();
+  const regiment = useSelectedRegimentData();
+  const isMoveMode = useMoveMode();
 
   return (
-    <GameLayout onAppReady={onAppReady}>
-      {/* Phase indicator - re-renders reactively on phase change */}
-      <div
-        className={`phase-indicator phase-${phase.toLowerCase()}`}
-      >
-        Phase: {phase}
-      </div>
-      {/* Regiment info and command panels are populated imperatively by the game layer.
-          The data-selected attribute exposes the React-managed selection state to those
-          imperative consumers in this hybrid DOM/React architecture. */}
-      <div id="regiment-info-panel" className="info-panel" data-selected={selectedRegimentId ?? ''} />
-      <div id="command-panel" className="command-panel" />
-      {/* End Turn button - disabled reactively during SIMULATION */}
-      <button id="end-turn-button" disabled={phase !== 'PLANNING'}>
-        End Turn
-      </button>
+    <GameLayout
+      onAppReady={onAppReady}
+      bottomPanel={
+        <BottomPanel
+          phase={phase}
+          selectedRegimentId={selectedRegimentId}
+          regiment={regiment}
+          isMoveMode={isMoveMode}
+          onMove={() => commandService.move()}
+          onHold={() => commandService.hold()}
+          onRotate={(dir) => commandService.rotate(dir)}
+          onEndTurn={() => commandService.endTurn()}
+        />
+      }
+    >
+      {/* Legacy hidden DOM targets required by imperative RegimentInfoPanel.ts / CommandPanel.ts */}
+      <div id="regiment-info-panel" className="info-panel--hidden-legacy" />
+      <div id="command-panel" className="command-panel--hidden-legacy" />
     </GameLayout>
   )
 }

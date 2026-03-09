@@ -1,5 +1,6 @@
 import { GameState } from './GameState.ts';
 import { GameMap } from './GameMap.ts';
+import type { Regiment } from './Regiment.ts';
 
 /**
  * GameService provides a singleton GameState instance that can be shared
@@ -36,3 +37,9 @@ gameMap.setTileHeight(15, 7, 30);
 
 // Create and export the singleton GameState instance
 export const gameState = new GameState(gameMap);
+
+/**
+ * Registry of Regiment instances, populated by main.tsx after regiments are created.
+ * Allows React hooks to read regiment data without coupling game logic to React.
+ */
+export const regimentRegistry = new Map<string, Regiment>();

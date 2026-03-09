@@ -1,7 +1,7 @@
 import type { Application } from 'pixi.js'
 import { createRoot } from 'react-dom/client'
 import { App } from './App.tsx'
-import { gameState } from './game/GameService.ts'
+import { gameState, regimentRegistry } from './game/GameService.ts'
 import { TurnSimulator } from './game/TurnSimulator.ts'
 import { GameLoop } from './game/GameLoop.ts'
 import { PixiRenderer } from './renderer/PixiRenderer.ts'
@@ -10,6 +10,7 @@ import type { MoveOrder } from './game/Order.ts'
 import { InputHandler } from './input/InputHandler.ts'
 import { RegimentInfoPanel } from './ui/RegimentInfoPanel.ts'
 import { CommandPanel } from './ui/CommandPanel.ts'
+import { commandService } from './game/CommandService.ts'
 
 // Use the shared GameState instance from GameService
 // The map configuration is now centralized in GameService
@@ -20,6 +21,11 @@ const regiments = [
   new Regiment('regiment-2', 5, 5, 'EAST'),
   new Regiment('regiment-3', 8, 2, 'SOUTH')
 ]
+
+// Populate the regiment registry so React hooks can read regiment data
+for (const regiment of regiments) {
+  regimentRegistry.set(regiment.getId(), regiment)
+}
 
 // Add regiments as units to game state for rendering
 for (const regiment of regiments) {
@@ -143,30 +149,25 @@ function onAppReady(app: Application) {
     }
   })
 
-  // Add "End Turn" button event listener
-  // Note: Direct DOM access is used here because this game logic runs outside React's control.
-  // The button is rendered by React but its click behavior is managed by the game loop.
-  const endTurnButton = document.getElementById('end-turn-button') as HTMLButtonElement | null
-  if (endTurnButton) {
-    endTurnButton.addEventListener('click', () => {
-      if (gameState.getPhase() === 'PLANNING') {
-        // Reset turn simulator before starting
-        turnSimulator.reset()
-        gameState.startTurn()
-        console.log('\n=== Turn started via button! ===')
-        console.log('Current phase:', gameState.getPhase())
-        
-        // Log completion when turn ends
-        const checkCompletion = setInterval(() => {
-          if (gameState.getPhase() === 'PLANNING') {
-            console.log('\n=== Turn completed! ===')
-            console.log('Back to PLANNING phase')
-            clearInterval(checkCompletion)
-          }
-        }, 100)
-      }
-    })
-  }
+  // Register the end-turn handler so the React GameInfoPanel can trigger it via commandService
+  commandService.registerEndTurnHandler(() => {
+    if (gameState.getPhase() === 'PLANNING') {
+      // Reset turn simulator before starting
+      turnSimulator.reset()
+      gameState.startTurn()
+      console.log('\n=== Turn started via End Turn button! ===')
+      console.log('Current phase:', gameState.getPhase())
+
+      // Log completion when turn ends
+      const checkCompletion = setInterval(() => {
+        if (gameState.getPhase() === 'PLANNING') {
+          console.log('\n=== Turn completed! ===')
+          console.log('Back to PLANNING phase')
+          clearInterval(checkCompletion)
+        }
+      }, 100)
+    }
+  })
 }
 
 // Render React app with callback
