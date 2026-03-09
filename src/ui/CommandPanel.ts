@@ -4,6 +4,7 @@ import type { MoveOrder, HoldOrder, RotateOrder } from '../game/Order.ts';
 import { calculateDirectionFromDelta } from '../game/Regiment.ts';
 import type { Application } from 'pixi.js';
 import type { PixiRenderer } from '../renderer/PixiRenderer.ts';
+import { commandService } from '../game/CommandService.ts';
 
 /**
  * CommandPanel provides UI controls to issue orders to the selected regiment.
@@ -56,6 +57,11 @@ export class CommandPanel {
     
     // Set up right-click and ESC key handlers for cancellation
     this.setupCancellationHandlers();
+
+    // Register command handlers with the commandService so React UI can trigger them
+    commandService.registerMoveHandler(() => this.handleMoveCommand());
+    commandService.registerHoldHandler(() => this.handleHoldCommand());
+    commandService.registerRotateHandler((dir) => this.handleRotateDirection(dir as 'NORTH' | 'SOUTH' | 'EAST' | 'WEST'));
     
     // Initialize panel state
     this.update();
@@ -115,7 +121,10 @@ export class CommandPanel {
     // Show panel only when a regiment is selected and in PLANNING phase
     if (phase !== 'PLANNING' || !selectedId) {
       this.panelElement.style.display = 'none';
-      this.moveMode = false;
+      if (this.moveMode) {
+        this.moveMode = false;
+        commandService.setMoveMode(false);
+      }
       this.previousSelectedRegimentId = null;
       this.moveButton.classList.remove('pressed');
       return;
@@ -124,6 +133,7 @@ export class CommandPanel {
     // Detect when a new regiment is selected and auto-activate MOVE mode
     if (selectedId !== this.previousSelectedRegimentId && !this.moveMode) {
       this.moveMode = true;
+      commandService.setMoveMode(true);
     }
     this.previousSelectedRegimentId = selectedId;
     
@@ -153,6 +163,7 @@ export class CommandPanel {
     } else {
       this.moveMode = true;
     }
+    commandService.setMoveMode(this.moveMode);
     
     this.update();
   }
@@ -215,6 +226,7 @@ export class CommandPanel {
    */
   private cancelMoveMode(): void {
     this.moveMode = false;
+    commandService.setMoveMode(false);
     this.update();
   }
 
@@ -363,6 +375,7 @@ export class CommandPanel {
       
       // Exit move mode
       this.moveMode = false;
+      commandService.setMoveMode(false);
       this.update();
     };
     

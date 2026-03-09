@@ -1,4 +1,4 @@
-import type { Order, MoveOrder, RotateOrder } from './Order.ts';
+import type { Order, MoveOrder } from './Order.ts';
 import type { GameMap } from './GameMap.ts';
 import { TurnSimulator } from './TurnSimulator.ts';
 

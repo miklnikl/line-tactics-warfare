@@ -5,34 +5,39 @@ import { GameField } from './GameField';
 interface GameLayoutProps {
   onAppReady?: (app: Application) => void;
   children?: React.ReactNode;
+  bottomPanel?: React.ReactNode;
 }
 
 /**
  * GameLayout component that provides the structural layout for the game.
- * 
+ *
  * Layout Structure:
- * - Fullscreen container that fills the viewport
- * - GameField (canvas layer) - fills available space, z-index: 1
- * - HUD overlay (absolute positioned) - overlays above canvas, z-index: 10
- * 
+ * - Flex-column container that fills the viewport
+ * - GameField (canvas layer) - flex: 1, fills all space above the bottom panel
+ * - HUD overlay (absolute positioned inside canvas layer) - z-index: 10
+ * - BottomPanel - fixed-height strip at the bottom, outside the canvas layer
+ *
  * Design Principles:
  * - Canvas and UI are cleanly separated using CSS positioning and z-index
- * - Canvas fills all available space responsively
+ * - Canvas fills all available space above the bottom panel
  * - HUD overlays above canvas without interfering with game rendering
- * - No UI elements are rendered inside the Pixi canvas
+ * - Bottom panel never overlaps the canvas (flex column, not stacked via z-index)
  */
-export const GameLayout: React.FC<GameLayoutProps> = ({ onAppReady, children }) => {
+export const GameLayout: React.FC<GameLayoutProps> = ({ onAppReady, children, bottomPanel }) => {
   return (
     <div className="game-layout">
-      {/* Canvas Layer: PixiJS game rendering */}
+      {/* Canvas layer: fills all space above the bottom panel */}
       <div className="game-layout__canvas-layer">
         <GameField onAppReady={onAppReady} />
+
+        {/* HUD overlay: absolutely positioned within the canvas layer */}
+        <div className="game-layout__hud-layer">
+          {children}
+        </div>
       </div>
-      
-      {/* HUD Layer: UI overlay (absolutely positioned above canvas) */}
-      <div className="game-layout__hud-layer">
-        {children}
-      </div>
+
+      {/* Bottom panel: fixed-height strip, outside the canvas layer */}
+      {bottomPanel}
     </div>
   );
 };
