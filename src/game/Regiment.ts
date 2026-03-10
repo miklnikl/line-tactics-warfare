@@ -80,6 +80,10 @@ export function calculateDirectionFromDelta(dx: number, dy: number): Direction {
  */
 export class Regiment {
   static readonly MAX_ORDERS = 3;
+  static readonly DEFAULT_UNIT_COUNT = 120;
+  static readonly DEFAULT_SHOOTING_RANGE = 3;
+  static readonly DEFAULT_SHOOTING_ACCURACY = 0.6;
+  static readonly DEFAULT_MORALE = 100;
 
   private id: string;
 
@@ -92,11 +96,21 @@ export class Regiment {
   // Movement interpolation state (only active during simulation)
   private movement: MovementState | null;
 
+  // Combat attributes
+  private unitCount: number;
+  private shootingRange: number;
+  private shootingAccuracy: number;
+  private morale: number;
+
   constructor(id: string, x: number, y: number, direction: Direction = 'NORTH') {
     this.id = id;
     this.state = { x, y, direction };
     this.orders = [];
     this.movement = null;
+    this.unitCount = Regiment.DEFAULT_UNIT_COUNT;
+    this.shootingRange = Regiment.DEFAULT_SHOOTING_RANGE;
+    this.shootingAccuracy = Regiment.DEFAULT_SHOOTING_ACCURACY;
+    this.morale = Regiment.DEFAULT_MORALE;
   }
 
   /**
@@ -139,6 +153,34 @@ export class Regiment {
    */
   getMovement(): MovementState | null {
     return this.movement;
+  }
+
+  /**
+   * Get the number of soldiers currently in the regiment
+   */
+  getUnitCount(): number {
+    return this.unitCount;
+  }
+
+  /**
+   * Get the maximum shooting range (in map tiles)
+   */
+  getShootingRange(): number {
+    return this.shootingRange;
+  }
+
+  /**
+   * Get the base shooting accuracy modifier (0–1)
+   */
+  getShootingAccuracy(): number {
+    return this.shootingAccuracy;
+  }
+
+  /**
+   * Get the current morale value (0–100)
+   */
+  getMorale(): number {
+    return this.morale;
   }
 
   /**
