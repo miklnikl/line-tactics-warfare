@@ -80,6 +80,7 @@ export function calculateDirectionFromDelta(dx: number, dy: number): Direction {
  */
 export class Regiment {
   static readonly MAX_ORDERS = 3;
+  static readonly MAX_MOVEMENT_RANGE = 3; // Maximum Chebyshev distance a regiment can move per turn
   static readonly DEFAULT_UNIT_COUNT = 120;
   static readonly DEFAULT_SHOOTING_RANGE = 3;
   static readonly DEFAULT_SHOOTING_ACCURACY = 0.6;
