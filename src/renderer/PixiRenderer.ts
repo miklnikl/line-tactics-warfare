@@ -50,6 +50,8 @@ export class PixiRenderer {
   private static readonly UNIT_CENTER_OFFSET_X = 32; // Half of tile width (64/2)
   private static readonly UNIT_CENTER_OFFSET_Y = 16; // Half of tile height (32/2)
   private static readonly ARROW_HEAD_SIZE = 10;
+  private static readonly ORDER_ARROW_MIN_ALPHA = 0.4;   // Minimum opacity for later-turn arrows
+  private static readonly ORDER_ARROW_ALPHA_DECAY = 0.25; // Alpha reduction per turn order
 
   // Visual constants for selection
   private static readonly SELECTION_STROKE_WIDTH = 2;
@@ -397,36 +399,48 @@ export class PixiRenderer {
     this.clearOrderVisualizations();
 
     for (const regiment of regiments) {
-      const order = regiment.getOrder();
-      if (!order) {
+      const orders = regiment.getOrders();
+      if (orders.length === 0) {
         continue;
       }
 
-      if (order.type === 'MOVE') {
-        this.renderMoveOrderVisualization(regiment, order, map);
-      } else if (order.type === 'HOLD') {
-        this.renderHoldOrderVisualization(regiment, map);
+      // Track the path position as we chain through orders
+      let pathX = regiment.getX();
+      let pathY = regiment.getY();
+
+      for (let i = 0; i < orders.length; i++) {
+        const order = orders[i];
+        if (order.type === 'MOVE') {
+          this.renderMoveOrderVisualization(pathX, pathY, order, map, i);
+          // Advance path to this order's destination for the next arrow
+          pathX = order.targetState.x;
+          pathY = order.targetState.y;
+        } else if (order.type === 'HOLD' && i === 0) {
+          this.renderHoldOrderVisualization(regiment, map);
+        }
       }
     }
   }
 
   /**
    * Render visualization for a MOVE order
-   * Shows an arrow from regiment to target tile and highlights the target
+   * Shows an arrow from the given start position to the target tile and highlights the target.
+   * @param startGridX - Starting grid X (regiment position or previous order's target)
+   * @param startGridY - Starting grid Y (regiment position or previous order's target)
+   * @param order - The MOVE order to visualize
+   * @param map - The game map for height lookups
+   * @param orderIndex - Index of this order in the queue (0 = immediate, 1 = next turn, …)
    */
-  private renderMoveOrderVisualization(regiment: Regiment, order: Order, map: GameMap): void {
+  private renderMoveOrderVisualization(startGridX: number, startGridY: number, order: Order, map: GameMap, orderIndex: number = 0): void {
     const graphics = new Graphics();
     this.orderVisualizationLayer.addChild(graphics);
 
-    // Get regiment position
-    const regimentX = regiment.getX();
-    const regimentY = regiment.getY();
-    let regimentHeight = 0;
-    const regimentTileX = Math.floor(regimentX);
-    const regimentTileY = Math.floor(regimentY);
-    
-    if (map.isValidPosition(regimentTileX, regimentTileY)) {
-      regimentHeight = map.getTileHeight(regimentTileX, regimentTileY);
+    // Resolve terrain height at start position
+    let startHeight = 0;
+    const startTileX = Math.floor(startGridX);
+    const startTileY = Math.floor(startGridY);
+    if (map.isValidPosition(startTileX, startTileY)) {
+      startHeight = map.getTileHeight(startTileX, startTileY);
     }
 
     // Get target position from the order's targetState
@@ -439,12 +453,16 @@ export class PixiRenderer {
     }
 
     // Convert to isometric coordinates
-    const regimentIso = gridToIso(regimentX, regimentY, regimentHeight, this.isoConfig);
+    const startIso = gridToIso(startGridX, startGridY, startHeight, this.isoConfig);
     const targetIso = gridToIso(targetX, targetY, targetHeight, this.isoConfig);
 
-    // Offset to center of unit (30x30 from renderUnit)
-    const startX = regimentIso.isoX + PixiRenderer.UNIT_CENTER_OFFSET_X;
-    const startY = regimentIso.isoY + PixiRenderer.UNIT_CENTER_OFFSET_Y;
+    // Arrow colour: first order is bright green; subsequent orders are progressively dimmer
+    const alpha = orderIndex === 0 ? 1.0 : Math.max(PixiRenderer.ORDER_ARROW_MIN_ALPHA, 1.0 - orderIndex * PixiRenderer.ORDER_ARROW_ALPHA_DECAY);
+    const arrowColor = 0x00ff00;
+
+    // Offset to center of start tile
+    const startX = startIso.isoX + PixiRenderer.UNIT_CENTER_OFFSET_X;
+    const startY = startIso.isoY + PixiRenderer.UNIT_CENTER_OFFSET_Y;
 
     // Draw target tile highlight (before arrow so arrow is on top)
     const tileWidth = this.isoConfig.tileWidth;
@@ -457,7 +475,7 @@ export class PixiRenderer {
       .lineTo(targetIso.isoX + tileWidth / 2, targetIso.isoY + tileHeight)
       .lineTo(targetIso.isoX, targetIso.isoY + tileHeight / 2)
       .lineTo(targetIso.isoX + tileWidth / 2, targetIso.isoY)
-      .fill({ color: 0x00ff00, alpha: 0.3 }); // Green highlight with transparency
+      .fill({ color: arrowColor, alpha: 0.3 * alpha }); // Green highlight with transparency
 
     // Calculate arrow endpoint (center of target tile)
     const endX = targetIso.isoX + tileWidth / 2;
@@ -467,7 +485,7 @@ export class PixiRenderer {
     graphics
       .moveTo(startX, startY)
       .lineTo(endX, endY)
-      .stroke({ width: 3, color: 0x00ff00 }); // Green arrow
+      .stroke({ width: 3, color: arrowColor, alpha }); // Green arrow
 
     // Draw arrowhead
     const angle = Math.atan2(endY - startY, endX - startX);
@@ -479,7 +497,7 @@ export class PixiRenderer {
       .lineTo(endX + PixiRenderer.ARROW_HEAD_SIZE * Math.cos(arrowAngle1), endY + PixiRenderer.ARROW_HEAD_SIZE * Math.sin(arrowAngle1))
       .moveTo(endX, endY)
       .lineTo(endX + PixiRenderer.ARROW_HEAD_SIZE * Math.cos(arrowAngle2), endY + PixiRenderer.ARROW_HEAD_SIZE * Math.sin(arrowAngle2))
-      .stroke({ width: 3, color: 0x00ff00 });
+      .stroke({ width: 3, color: arrowColor, alpha });
   }
 
   /**

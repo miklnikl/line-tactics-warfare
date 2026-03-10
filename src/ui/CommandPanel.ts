@@ -1,5 +1,5 @@
 import type { GameState } from '../game/GameState.ts';
-import type { Regiment } from '../game/Regiment.ts';
+import { Regiment } from '../game/Regiment.ts';
 import type { MoveOrder, HoldOrder, RotateOrder } from '../game/Order.ts';
 import { calculateDirectionFromDelta } from '../game/Regiment.ts';
 import type { Application } from 'pixi.js';
@@ -308,6 +308,22 @@ export class CommandPanel {
   }
 
   /**
+   * Get the planned end position for a regiment.
+   * Returns the targetState position of the last position-changing order (MOVE or HOLD),
+   * or the regiment's current position if no such orders are queued.
+   */
+  private getPlannedEndPosition(regiment: Regiment): { x: number; y: number } {
+    const orders = regiment.getOrders();
+    for (let i = orders.length - 1; i >= 0; i--) {
+      const order = orders[i];
+      if (order.type === 'MOVE' || order.type === 'HOLD') {
+        return { x: Math.round(order.targetState.x), y: Math.round(order.targetState.y) };
+      }
+    }
+    return { x: Math.round(regiment.getX()), y: Math.round(regiment.getY()) };
+  }
+
+  /**
    * Set up canvas click listener for move target selection
    */
   private setupCanvasClickListener(): void {
@@ -368,38 +384,61 @@ export class CommandPanel {
         return;
       }
       
-      // Check if target is the same tile as current position
-      const currentX = Math.round(regiment.getX());
-      const currentY = Math.round(regiment.getY());
-      if (targetX === currentX && targetY === currentY) {
-        console.log(`Target position (${targetX}, ${targetY}) - same as current position`);
+      // Determine the planning start position: end of last existing order, or current position
+      const { x: startX, y: startY } = this.getPlannedEndPosition(regiment);
+
+      // Check if target is the same tile as the planning start position
+      if (targetX === startX && targetY === startY) {
+        console.log(`Target position (${targetX}, ${targetY}) - same as planned position`);
         return;
       }
-      
-      // Calculate direction based on movement vector (stored in targetState, applied during simulation)
-      const deltaX = targetX - regiment.getX();
-      const deltaY = targetY - regiment.getY();
-      const newDirection = calculateDirectionFromDelta(deltaX, deltaY);
-      
-      // Assign MOVE order with validated target position and facing direction in targetState
-      const moveOrder: MoveOrder = {
-        type: 'MOVE',
-        targetState: {
-          x: targetX,
-          y: targetY,
-          direction: newDirection
+
+      // Iteratively add MOVE orders, each advancing at most MAX_MOVEMENT_RANGE tiles (Chebyshev)
+      // toward the target. This guarantees each individual order respects the movement constraint.
+      const maxRange = Regiment.MAX_MOVEMENT_RANGE;
+      let prevX = startX;
+      let prevY = startY;
+      let ordersAdded = 0;
+
+      while (prevX !== targetX || prevY !== targetY) {
+        if (regiment.getOrders().length >= Regiment.MAX_ORDERS) {
+          console.log(`Order queue full for ${selectedId} after ${ordersAdded} step(s) - remaining movement must be ordered next turn`);
+          break;
         }
-      };
-      const added = regiment.addOrder(moveOrder);
-      if (!added) {
-        console.log(`Order queue full for ${selectedId} (max 3 orders)`);
-        this.moveMode = false;
-        commandService.setMoveMode(false);
-        this.update();
-        return;
+
+        const remDx = targetX - prevX;
+        const remDy = targetY - prevY;
+        const remDist = Math.max(Math.abs(remDx), Math.abs(remDy));
+
+        let wpX: number;
+        let wpY: number;
+        if (remDist <= maxRange) {
+          // Remaining distance fits in one order — go directly to target
+          wpX = targetX;
+          wpY = targetY;
+        } else {
+          // Advance exactly maxRange tiles toward the target
+          const t = maxRange / remDist;
+          wpX = Math.round(prevX + remDx * t);
+          wpY = Math.round(prevY + remDy * t);
+        }
+
+        // Defensive check: rounding should never produce a zero-movement step, but guard anyway
+        if (wpX === prevX && wpY === prevY) {
+          break;
+        }
+
+        const dir = calculateDirectionFromDelta(wpX - prevX, wpY - prevY);
+        const moveOrder: MoveOrder = {
+          type: 'MOVE',
+          targetState: { x: wpX, y: wpY, direction: dir }
+        };
+        regiment.addOrder(moveOrder);
+        console.log(`MOVE order (step ${ordersAdded + 1}) added to queue for ${selectedId}: target (${wpX}, ${wpY})`);
+        prevX = wpX;
+        prevY = wpY;
+        ordersAdded++;
       }
-      
-      console.log(`MOVE order added to queue for ${selectedId}: target (${moveOrder.targetState.x}, ${moveOrder.targetState.y})`);
       
       // Exit move mode
       this.moveMode = false;
