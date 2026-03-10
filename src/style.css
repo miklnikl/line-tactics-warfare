@@ -439,9 +439,134 @@ button:disabled,
   }
 }
 
-/* =========================================================================
-   Bottom Panel – fixed-height RTS-style HUD
-   ========================================================================= */
+/* Orders queue section within Regiment Info panel */
+.bottom-panel__orders-section {
+  margin-top: 4px;
+  font-size: 0.85em;
+}
+
+.bottom-panel__placeholder--inline {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.35);
+  margin-left: 4px;
+}
+
+/* Orders table */
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85em;
+}
+
+.orders-table__row {
+  border-bottom: 1px solid rgba(100, 108, 255, 0.15);
+}
+
+.orders-table__row:last-child {
+  border-bottom: none;
+}
+
+.orders-table__index {
+  width: 16px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.8em;
+  vertical-align: middle;
+  padding: 1px 4px 1px 0;
+}
+
+.orders-table__desc {
+  color: rgba(255, 255, 255, 0.9);
+  vertical-align: middle;
+  padding: 1px 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+}
+
+.orders-table__actions {
+  white-space: nowrap;
+  vertical-align: middle;
+  padding: 1px 0;
+}
+
+.orders-table__btn {
+  padding: 0 4px;
+  margin: 0 1px;
+  font-size: 0.8em;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  background-color: rgba(100, 108, 255, 0.25);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(100, 108, 255, 0.4);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  line-height: 1;
+}
+
+.orders-table__btn:hover:not(:disabled) {
+  background-color: rgba(100, 108, 255, 0.5);
+  color: rgba(255, 255, 255, 1);
+}
+
+.orders-table__btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.orders-table__btn--remove {
+  background-color: rgba(220, 60, 60, 0.25);
+  border-color: rgba(220, 60, 60, 0.4);
+  color: rgba(255, 120, 120, 0.9);
+}
+
+.orders-table__btn--remove:hover:not(:disabled) {
+  background-color: rgba(220, 60, 60, 0.5);
+  color: rgba(255, 180, 180, 1);
+}
+
+@media (prefers-color-scheme: light) {
+  .bottom-panel__placeholder--inline {
+    color: rgba(33, 53, 71, 0.35);
+  }
+
+  .orders-table__index {
+    color: rgba(33, 53, 71, 0.4);
+  }
+
+  .orders-table__desc {
+    color: rgba(33, 53, 71, 0.9);
+  }
+
+  .orders-table__row {
+    border-bottom-color: rgba(83, 91, 242, 0.15);
+  }
+
+  .orders-table__btn {
+    background-color: rgba(83, 91, 242, 0.15);
+    color: rgba(33, 53, 71, 0.8);
+    border-color: rgba(83, 91, 242, 0.35);
+  }
+
+  .orders-table__btn:hover:not(:disabled) {
+    background-color: rgba(83, 91, 242, 0.35);
+    color: rgba(33, 53, 71, 1);
+  }
+
+  .orders-table__btn--remove {
+    background-color: rgba(200, 40, 40, 0.15);
+    border-color: rgba(200, 40, 40, 0.35);
+    color: rgba(180, 30, 30, 0.9);
+  }
+
+  .orders-table__btn--remove:hover:not(:disabled) {
+    background-color: rgba(200, 40, 40, 0.35);
+  }
+}
 
 /* Hidden legacy DOM targets used by imperative RegimentInfoPanel.ts / CommandPanel.ts */
 .info-panel--hidden-legacy,

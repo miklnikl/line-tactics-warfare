@@ -195,9 +195,13 @@ export class CommandPanel {
         direction: regiment.getDirection()
       }
     };
-    regiment.setOrder(holdOrder);
+    const added = regiment.addOrder(holdOrder);
+    if (!added) {
+      console.log(`Order queue full for ${selectedId} (max 3 orders)`);
+      return;
+    }
     
-    console.log(`HOLD order assigned to ${selectedId}`);
+    console.log(`HOLD order added to queue for ${selectedId}`);
   }
 
   /**
@@ -227,9 +231,13 @@ export class CommandPanel {
         direction
       }
     };
-    regiment.setOrder(rotateOrder);
+    const added = regiment.addOrder(rotateOrder);
+    if (!added) {
+      console.log(`Order queue full for ${selectedId} (max 3 orders)`);
+      return;
+    }
     
-    console.log(`ROTATE order assigned to ${selectedId}: direction ${direction}`);
+    console.log(`ROTATE order added to queue for ${selectedId}: direction ${direction}`);
   }
 
   /**
@@ -287,10 +295,11 @@ export class CommandPanel {
         continue;
       }
       
-      const order = regiment.getOrder();
-      if (order && order.type === 'MOVE') {
-        if (Math.round(order.targetState.x) === targetTileX && Math.round(order.targetState.y) === targetTileY) {
-          return true;
+      for (const order of regiment.getOrders()) {
+        if (order.type === 'MOVE') {
+          if (Math.round(order.targetState.x) === targetTileX && Math.round(order.targetState.y) === targetTileY) {
+            return true;
+          }
         }
       }
     }
@@ -381,9 +390,16 @@ export class CommandPanel {
           direction: newDirection
         }
       };
-      regiment.setOrder(moveOrder);
+      const added = regiment.addOrder(moveOrder);
+      if (!added) {
+        console.log(`Order queue full for ${selectedId} (max 3 orders)`);
+        this.moveMode = false;
+        commandService.setMoveMode(false);
+        this.update();
+        return;
+      }
       
-      console.log(`MOVE order assigned to ${selectedId}: target (${moveOrder.targetState.x}, ${moveOrder.targetState.y})`);
+      console.log(`MOVE order added to queue for ${selectedId}: target (${moveOrder.targetState.x}, ${moveOrder.targetState.y})`);
       
       // Exit move mode
       this.moveMode = false;

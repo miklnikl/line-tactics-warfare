@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { GamePhase } from '../game/GameState';
 import { gameState, regimentRegistry } from '../game/GameService';
 import { commandService } from '../game/CommandService';
-import type { MoveOrder } from '../game/Order';
+import type { Order } from '../game/Order';
 
 /**
  * React hook that subscribes to GameState phase changes.
@@ -34,22 +34,26 @@ export function useSelectedRegimentId(): string | null {
   return selectedId;
 }
 
+/** Single order entry exposed to pure-UI React components. */
+export interface OrderDisplayData {
+  type: string;
+  description: string;
+}
+
 /** Data shape exposed to pure-UI React components. */
 export interface RegimentDisplayData {
   id: string;
   x: number;
   y: number;
   direction: string;
-  orderText: string;
+  orders: OrderDisplayData[];
 }
 
-function formatOrder(order: unknown): string {
-  if (!order) return 'None';
-  const o = order as { type: string; targetX?: number; targetY?: number };
-  if (o.type === 'MOVE' && o.targetX !== undefined && o.targetY !== undefined) {
-    return `MOVE to (${o.targetX}, ${o.targetY})`;
+function formatOrderDescription(order: Order): string {
+  if (order.type === 'MOVE') {
+    return `MOVE to (${order.targetState.x}, ${order.targetState.y})`;
   }
-  return o.type;
+  return order.type;
 }
 
 /**
@@ -80,7 +84,10 @@ export function useSelectedRegimentData(): RegimentDisplayData | null {
         x: regiment.getX(),
         y: regiment.getY(),
         direction: regiment.getDirection(),
-        orderText: formatOrder(regiment.getOrder() as MoveOrder | null),
+        orders: [...regiment.getOrders()].map(o => ({
+          type: o.type,
+          description: formatOrderDescription(o),
+        })),
       });
     }
 

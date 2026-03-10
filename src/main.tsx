@@ -120,8 +120,8 @@ function onAppReady(app: Application) {
             direction: calculateDirectionFromDelta(10 - regiments[0].getX(), 10 - regiments[0].getY())
           }
         }
-        regiments[0].setOrder(moveOrder)
-        console.log('Move order assigned to regiment-1: target (10, 10)')
+        regiments[0].addOrder(moveOrder)
+        console.log('Move order added to regiment-1 queue: target (10, 10)')
         console.log('Current position:', regiments[0].getX(), regiments[0].getY())
       }
     }
@@ -174,6 +174,37 @@ function onAppReady(app: Application) {
         }
       }, 100)
     }
+  })
+
+  // Register order management handlers
+  commandService.registerRemoveOrderHandler((index) => {
+    if (gameState.getPhase() !== 'PLANNING') return
+    const selectedId = gameState.getSelectedRegimentId()
+    if (!selectedId) return
+    const regiment = regimentMap.get(selectedId)
+    if (!regiment) return
+    regiment.removeOrder(index)
+    console.log(`Removed order at index ${index} from ${selectedId}`)
+  })
+
+  commandService.registerMoveOrderUpHandler((index) => {
+    if (gameState.getPhase() !== 'PLANNING') return
+    const selectedId = gameState.getSelectedRegimentId()
+    if (!selectedId) return
+    const regiment = regimentMap.get(selectedId)
+    if (!regiment) return
+    regiment.moveOrderUp(index)
+    console.log(`Moved order at index ${index} up for ${selectedId}`)
+  })
+
+  commandService.registerMoveOrderDownHandler((index) => {
+    if (gameState.getPhase() !== 'PLANNING') return
+    const selectedId = gameState.getSelectedRegimentId()
+    if (!selectedId) return
+    const regiment = regimentMap.get(selectedId)
+    if (!regiment) return
+    regiment.moveOrderDown(index)
+    console.log(`Moved order at index ${index} down for ${selectedId}`)
   })
 }
 
